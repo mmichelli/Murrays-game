@@ -211,6 +211,34 @@ describe("P2P host hub — connection + lobby protocol", () => {
     expect(hub.getState().wordCounts[pid]).toBe(2);          // words preserved
   });
 
+  it("rehydrates from a saved snapshot so a reloaded host resumes the game", async () => {
+    // Set up a room with a player on a team, then snapshot it (what the host
+    // persists across a reload).
+    hub.dispatch({ type: "ADD_TEAM" });
+    hub.dispatch({ type: "ADD_WORDS", words: ["Braai", "Pap", "Vetkoek", "Biltong"] });
+    const teamId = hub.getState().teams[0].id;
+    hub.dispatch({ type: "ADD_PLAYER", player: { id: "ann-cid", name: "Ann", teamId } });
+    const snapshot = hub.getState();
+
+    // Reload: a brand-new hub seeded with the saved snapshot starts there, not
+    // in an empty lobby.
+    const resumed = createHostHub({});
+    const back = createHostHub({ initialState: snapshot });
+    expect(back.getState()).toBe(snapshot);
+    expect(resumed.getState().players).toHaveLength(0); // sanity: default is empty
+
+    // The phone reconnects with its stable cid and reclaims its exact seat in
+    // the resumed game.
+    const a = makeClient("Ann");
+    back.attach(a.hostSide);
+    a.hello("ann-cid");
+    await flush();
+    expect(a.id).toBe("ann-cid");
+    expect(back.getState().players.filter((p) => p.id === "ann-cid")).toHaveLength(1);
+    expect(back.getState().players.find((p) => p.id === "ann-cid").teamId).toBe(teamId);
+    expect(back.getState().bowl).toHaveLength(4);
+  });
+
   it("attributes words to the contributor and reports it in the lobby", async () => {
     const a = makeClient("Ann"), b = makeClient("Ben");
     hub.attach(a.hostSide); hub.attach(b.hostSide);

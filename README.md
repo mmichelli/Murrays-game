@@ -47,6 +47,7 @@ To keep clue-giving snappy over the wire, the giver's view also carries a tiny *
 Real phones drop the WebRTC link constantly — backgrounding, screen locks, signal blips. The app is built to ride through it:
 
 - **Stable seats.** Each device keeps a stable per-room id, so a phone that drops, reloads, or backgrounds **reclaims its exact seat** — same team, score, turn and words — instead of rejoining as a stranger.
+- **Survives a full page reload.** A refresh tears down the whole JS context, but each tab remembers its role and room in `sessionStorage`, so it silently re-dials and picks up where it left off — no re-typing, no "reload to rejoin". The host keeps the **same room code** (so phones reconnect to the same broker id, even briefly racing its own freed registration) and recovers the **entire in-progress game** — players, teams, bowl, scores, round and timer — via `createHostHub({ initialState })`. A player just remembers their name + code and auto-rejoins.
 - **Auto-reconnect.** Clients retry with backoff, instantly on tab-refocus / network-return, and on a silent ICE failure (which doesn't always fire a clean close). A banner with a **Retry now** button shows while it's working.
 - **Seats survive drops.** The host marks a dropped player *offline* rather than deleting them; genuine lobby ghosts are pruned only after a grace period, never mid-game. The host also rebuilds its own broker link on a blip.
 - **Wall-clock timer.** The turn countdown is driven by real elapsed time, so a locked host screen can't freeze the clock.
