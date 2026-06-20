@@ -272,8 +272,11 @@ export const lobbyFor = (s, pid) => ({
  *   { readyState, send(str), onmessage(ev), onclose() }  plus a
  *   private `_pid` we stamp on once the player says hello.
  * ------------------------------------------------------------------ */
-export function createHostHub({ onState } = {}) {
-  let state = initial;
+export function createHostHub({ onState, initialState } = {}) {
+  // Rehydrate from a persisted snapshot when the host reloads, so an
+  // in-progress game (players, teams, bowl, scores, round, timer) is recovered
+  // and reconnecting phones rejoin the same game rather than an empty lobby.
+  let state = initialState || initial;
   const channels = new Map(); // pid -> channel
 
   const send = (ch, obj) => { if (ch && ch.readyState === "open") { try { ch.send(JSON.stringify(obj)); } catch {} } };

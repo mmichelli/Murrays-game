@@ -60,6 +60,17 @@ function stableClientId(code) {
     return v;
   } catch { return uid() + uid() + uid(); }
 }
+// Reload persistence. The WebRTC link itself dies on reload, but PeerJS can
+// re-establish it through the broker — so if we remember the room (host code /
+// client name+code) and the in-progress game, a refresh silently re-dials and
+// drops everyone back exactly where they were. sessionStorage survives a
+// reload, is per-tab (so host + client tabs in one browser stay independent),
+// and clears when the tab closes. Leaving the room wipes it.
+const PK = { role: "mrysg.role", host: "mrysg.host", client: "mrysg.client" };
+const ssGet = (k) => { try { const v = sessionStorage.getItem(k); return v == null ? null : JSON.parse(v); } catch { return null; } };
+const ssSet = (k, v) => { try { sessionStorage.setItem(k, JSON.stringify(v)); } catch {} };
+const ssDel = (...ks) => { try { ks.forEach((k) => sessionStorage.removeItem(k)); } catch {} };
+
 // Adapt a PeerJS DataConnection to the channel shape the host hub speaks:
 // { readyState, send(str), onmessage(ev), onclose() }.
 function peerChannel(conn) {
@@ -80,7 +91,13 @@ function peerChannel(conn) {
 /* ============================== APP ============================== */
 export default function App() {
   const initialRoom = useRef(readRoomParam()).current;
-  const [role, setRole] = useState(initialRoom ? "client" : null);
+  // Restore the role across a reload (per-tab), so a refresh resumes hosting /
+  // playing instead of dropping back to the landing page.
+  const [role, setRoleState] = useState(() => ssGet(PK.role) || (initialRoom ? "client" : null));
+  const setRole = useCallback((r) => {
+    if (r) ssSet(PK.role, r); else ssDel(PK.role, PK.host, PK.client); // leaving wipes the saved game
+    setRoleState(r);
+  }, []);
   return (
     <div className="fb-root" style={{ "--accent": "#FF6A3D" }}>
       <style>{CSS}</style>
@@ -109,20 +126,26 @@ function Landing({ onPick }) {
 
 /* ============================== HOST ============================== */
 function HostApp({ onExit }) {
-  const hostId = useRef(uid()).current;
-  const roomCode = useRef(makeRoomCode()).current;
-  const [state, setState] = useState(initial);
+  // Rehydrate the room across a reload: same code (so phones reconnect to the
+  // same broker id), same host identity, same in-progress game.
+  const saved = useRef(ssGet(PK.host)).current;
+  const hostId = useRef(saved?.hostId || uid()).current;
+  const roomCode = useRef(saved?.roomCode || makeRoomCode()).current;
+  const [state, setState] = useState(saved?.state || initial);
   const hubRef = useRef(null);
-  if (!hubRef.current) hubRef.current = createHostHub({ onState: setState });
+  if (!hubRef.current) hubRef.current = createHostHub({ onState: setState, initialState: saved?.state || initial });
   const hub = hubRef.current;
   const dispatch = useCallback((a) => hub.dispatch(a), [hub]);
 
-  const [name, setName] = useState("");
-  const [open, setOpen] = useState(false);
+  const [name, setName] = useState(saved?.name || "");
+  const [open, setOpen] = useState(!!saved?.open);
   const [peerStatus, setPeerStatus] = useState("connecting"); // connecting | online | error
   const peerRef = useRef(null);
 
   const view = useMemo(() => viewFor(state, hostId), [state, hostId]);
+
+  // Persist enough to recover the room on reload (per-tab).
+  useEffect(() => { ssSet(PK.host, { hostId, roomCode, name, open, state }); }, [hostId, roomCode, name, open, state]);
 
   // Host is the authoritative timer, driven by the wall clock so a screen
   // lock or backgrounded tab (which throttles/pauses setInterval) doesn't
@@ -155,14 +178,15 @@ function HostApp({ onExit }) {
   // (the code is taken, or the browser can't do WebRTC) shows a dead end.
   useEffect(() => {
     if (!open) return;
-    let peer, cancelled = false, retry = 0, timer = null;
-    const FATAL = ["unavailable-id", "invalid-id", "invalid-key", "browser-incompatible", "ssl-unavailable"];
+    let peer, cancelled = false, retry = 0, idRetry = 0, timer = null;
+    const FATAL = ["invalid-id", "invalid-key", "browser-incompatible", "ssl-unavailable"];
+    const backoff = () => { clearTimeout(timer); timer = setTimeout(() => { if (!cancelled) spinUp(); }, Math.min(1000 * 2 ** Math.min(retry++, 4), 16000)); };
     const spinUp = async () => {
       const { default: Peer } = await import("peerjs");
       if (cancelled) return;
       peer = new Peer(peerIdFor(roomCode), peerOptions());
       peerRef.current = peer;
-      peer.on("open", () => { retry = 0; setPeerStatus("online"); });
+      peer.on("open", () => { retry = 0; idRetry = 0; setPeerStatus("online"); });
       peer.on("connection", (conn) => hub.attach(peerChannel(conn)));
       // If the host phone backgrounds, the broker link can drop. Reclaim it
       // (same room id) so players' reconnect attempts find the room again.
@@ -170,14 +194,29 @@ function HostApp({ onExit }) {
       peer.on("error", (err) => {
         if (FATAL.includes(err?.type)) { setPeerStatus("error"); return; }
         if (cancelled) return;
+        // After a reload the broker may still hold our previous registration of
+        // this exact id for a few seconds. Retry through it rather than calling
+        // the room dead; only give up if it stays taken (a real code clash).
+        if (err?.type === "unavailable-id") {
+          if (idRetry++ >= 6) { setPeerStatus("error"); return; }
+        }
         setPeerStatus("connecting");
         try { peer.destroy(); } catch {}
-        clearTimeout(timer);
-        timer = setTimeout(() => { if (!cancelled) spinUp(); }, Math.min(1000 * 2 ** Math.min(retry++, 4), 16000));
+        backoff();
       });
     };
     spinUp();
-    return () => { cancelled = true; clearTimeout(timer); try { peer && peer.destroy(); } catch {} };
+    // Free the broker id promptly on reload/close so the reloaded host can
+    // re-claim it without waiting out the broker's stale-registration timeout.
+    const bye = () => { try { peer && peer.destroy(); } catch {} };
+    window.addEventListener("beforeunload", bye);
+    window.addEventListener("pagehide", bye);
+    return () => {
+      cancelled = true; clearTimeout(timer);
+      window.removeEventListener("beforeunload", bye);
+      window.removeEventListener("pagehide", bye);
+      try { peer && peer.destroy(); } catch {}
+    };
   }, [open, roomCode, hub]);
 
   // Prune phones that have stayed gone for a while — but only in the lobby.
@@ -325,9 +364,12 @@ function HostLobby({ state, dispatch, hostId, roomCode, peerStatus, onExit }) {
  * banner — no button to press — instead of a dead "reload to rejoin".
  * ------------------------------------------------------------------ */
 function ClientApp({ onExit, initialRoom }) {
-  const [name, setName] = useState("");
-  const [code, setCode] = useState(initialRoom || "");
-  const [step, setStep] = useState("form"); // form | connecting | lobby
+  // Restore what we need to silently re-dial after a reload.
+  const saved = useRef(ssGet(PK.client)).current;
+  const resuming = !!(saved?.name && saved?.code);
+  const [name, setName] = useState(saved?.name || "");
+  const [code, setCode] = useState(saved?.code || initialRoom || "");
+  const [step, setStep] = useState(resuming ? "connecting" : "form"); // form | connecting | lobby
   const [status, setStatus] = useState("");
   const [reconnecting, setReconnecting] = useState(false);
   const [online, setOnline] = useState(typeof navigator === "undefined" ? true : navigator.onLine);
@@ -419,14 +461,26 @@ function ClientApp({ onExit, initialRoom }) {
     peerRef.current = null;
     spinUp();
   }
-  const join = () => {
-    if (!name.trim() || !code.trim()) return;
-    nameRef.current = name.trim(); codeRef.current = code.trim();
-    cidRef.current = stableClientId(codeRef.current);
+  // Begin (or resume) a connection to the room with a known name + code.
+  function start(n, c) {
+    nameRef.current = n; codeRef.current = c;
+    cidRef.current = stableClientId(c);
+    ssSet(PK.client, { name: n, code: c }); // remember so a reload re-dials itself
     aliveRef.current = true; retryRef.current = 0;
     setStep("connecting"); setStatus("Reaching the room…");
     spinUp();
+  }
+  const join = () => {
+    if (!name.trim() || !code.trim()) return;
+    start(name.trim(), code.trim());
   };
+  // Auto-rejoin after a reload: we were in a room, so re-dial immediately
+  // instead of showing the form. The stable cid means the host hands us back
+  // our exact seat — same team, score and turn.
+  const startedRef = useRef(false);
+  useEffect(() => {
+    if (resuming && !startedRef.current) { startedRef.current = true; start(saved.name, saved.code); }
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Bridge the latest reconnectNow into a stable listener so the effect
   // subscribes once, not on every render. The browser tells us when the phone
