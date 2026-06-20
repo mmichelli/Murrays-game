@@ -72,21 +72,18 @@ function useFollowTeamAccent(color) {
   useEffect(() => { setAccent(color || BRAND_ACCENT); return () => setAccent(BRAND_ACCENT); }, [color, setAccent]);
 }
 
-/* ---------------------- pixel-art round icons --------------------- *
- * Each round's emoji redrawn as a chunky single-colour pixel sprite, so
- * the icons match the game's crisp brutalist look and render identically
- * on every device (system emoji vary wildly). '#' is a filled pixel; the
- * glyph inherits the surrounding text colour via currentColor.
- *   1 Describe  - theatre mask     2 Charades - running figure
- *   3 One Word  - speech bubble    4 Hands Only - open hand
- *   5 Face Only - face, one raised brow
+/* --------------------- pixel-art round numbers -------------------- *
+ * Each round shows its number as a bold pixel-art digit (rendered as
+ * crisp inline SVG), so the marker matches the game's brutalist look and
+ * is identical on every device. '#' is a filled pixel; the digit inherits
+ * the surrounding text colour via currentColor.
  * ------------------------------------------------------------------ */
 const ROUND_PIX = {
-  1: ["...######...", ".##########.", "############", "##..####..##", "############", "############", ".##########.", ".#........#.", "..#......#..", "..########..", "...######...", "....####...."],
-  2: [".....##.....", "....####....", "....####....", ".....##.....", "..#######...", ".###.###....", "....####....", "...##.##....", "..##...##...", ".##.....##..", "##.......#..", "............"],
-  3: [".##########.", "############", "############", "####....####", "############", "############", ".##########.", "..####......", "..###.......", "..#.........", "............", "............"],
-  4: ["..#.#.#.#...", "..#.#.#.#...", "..#.#.#.#...", "..#######...", ".########...", ".########...", "..#######...", "..#######...", "...#####....", "...#####....", "............", "............"],
-  5: ["....####....", "..########..", ".##########.", "###..#######", "############", "###..##..###", "############", "############", "####....####", "..########..", "....####....", "............"],
+  1: ["..###.", ".####.", "...##.", "...##.", "...##.", "...##.", "...##.", "...##.", ".#####"],
+  2: [".####.", "##..##", "....##", "...##.", "..##..", ".##...", "##....", "##....", "######"],
+  3: ["#####.", "....##", "....##", ".####.", ".####.", "....##", "....##", "....##", "#####."],
+  4: ["##..##", "##..##", "##..##", "######", "....##", "....##", "....##", "....##", "....##"],
+  5: ["######", "##....", "##....", "#####.", "....##", "....##", "....##", "##..##", ".####."],
 };
 // Render a round's sprite as inline SVG that scales with the font size and
 // stays pixel-crisp at any zoom.
@@ -936,7 +933,7 @@ function Endgame({ v }) {
       ))}
       <details className="fb-details"><summary>{tr("end.roundByRound")}</summary>
         <div className="fb-scroll"><table className="fb-table">
-          <thead><tr><th>{tr("end.team")}</th>{ROUNDS.map((r) => <th key={r.n}><span className="fb-th2"><RoundIcon n={r.n} /><span>{tr("end.r", { n: r.n })}</span></span></th>)}</tr></thead>
+          <thead><tr><th>{tr("end.team")}</th>{ROUNDS.map((r) => <th key={r.n}><span className="fb-th2"><RoundIcon n={r.n} className="fb-pixicon-th" /></span></th>)}</tr></thead>
           <tbody>{ranked.map((t) => <tr key={t.id}><td style={{ color: t.color }}>{t.name}</td>{v.scores[t.id].map((s, i) => <td key={i}>{s}</td>)}</tr>)}</tbody>
         </table></div>
       </details>
@@ -1198,8 +1195,9 @@ const CSS = `
 .fb-rname{font-family:Archivo,sans-serif;font-weight:800;font-size:14.5px;color:var(--ink);white-space:nowrap;flex:none;}
 .fb-rgloss{color:var(--muted);font-size:13px;line-height:1.3;}
 /* chunky pixel-art round glyphs - scale with the text, stay crisp */
-.fb-pixicon{display:inline-block;width:1.15em;height:1.15em;vertical-align:-0.18em;flex:none;}
-.fb-roundtag .fb-pixicon{width:1.25em;height:1.25em;vertical-align:-0.22em;}
+.fb-pixicon{display:inline-block;width:0.9em;height:1.15em;vertical-align:-0.18em;flex:none;}
+.fb-roundtag .fb-pixicon{width:1em;height:1.25em;vertical-align:-0.22em;}
+.fb-pixicon-th{width:1.4em;height:1.7em;vertical-align:0;}
 
 .fb-steps{display:flex;gap:8px;}
 .fb-step{flex:1;display:flex;align-items:center;justify-content:center;gap:7px;background:var(--panel);border:2.5px solid var(--ink);border-radius:6px;padding:11px 6px;font-family:'Space Mono',monospace;font-weight:700;font-size:12px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);cursor:pointer;}
