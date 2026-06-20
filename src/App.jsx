@@ -55,7 +55,7 @@ function LangSwitcher() {
  * per-device cue (set by the host/client subtree from the player's own
  * team) and resets to the brand when you're not in a group.
  * ------------------------------------------------------------------ */
-const BRAND_ACCENT = "#1F51FF";
+const BRAND_ACCENT = "#3B6EA5";
 const AccentCtx = createContext(null);
 function AccentProvider({ children }) {
   const [accent, setAccentState] = useState(BRAND_ACCENT);
@@ -669,7 +669,7 @@ function ReconnectBanner({ show, online }) {
 // word immediately and reconcile when the host's authoritative view lands.
 // The host itself dispatches synchronously, so it shows the real word as-is.
 function GameView({ view, onIntent, optimistic = false }) {
-  const accent = view.phase === "endgame" ? "#1F51FF" : view.round?.accent || "#1F51FF";
+  const accent = view.phase === "endgame" ? "#3B6EA5" : view.round?.accent || "#3B6EA5";
   return (
     <div style={{ "--accent": accent }}>
       {view.phase === "ready" && <Ready v={view} onIntent={onIntent} />}
