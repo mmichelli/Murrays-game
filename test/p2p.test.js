@@ -101,6 +101,52 @@ describe("P2P host hub — connection + lobby protocol", () => {
     expect(hub.getState().bowl).toEqual(["Braai", "Pap", "Boerewors"]);
   });
 
+  it("a client can add a group and rename groups over the wire", async () => {
+    const a = makeClient("Ann");
+    hub.attach(a.hostSide);
+    a.hello();
+    await flush();
+
+    // host starts with no teams; client adds two groups itself
+    a.send({ t: "addTeam" });
+    a.send({ t: "addTeam" });
+    await flush();
+    expect(hub.getState().teams).toHaveLength(2);
+    expect(a.lobby.teams).toHaveLength(2);
+
+    // client renames the first group; host state and the broadcast both reflect it
+    const id = hub.getState().teams[0].id;
+    a.send({ t: "renameTeam", id, name: "Springbokke" });
+    await flush();
+    expect(hub.getState().teams[0].name).toBe("Springbokke");
+    expect(a.lobby.teams[0].name).toBe("Springbokke");
+  });
+
+  it("the lobby snapshot carries per-group counts and who is in each group", async () => {
+    const a = makeClient("Ann"), b = makeClient("Ben");
+    hub.attach(a.hostSide); hub.attach(b.hostSide);
+    a.hello(); b.hello();
+    await flush();
+
+    hub.dispatch({ type: "ADD_TEAM" });
+    hub.dispatch({ type: "ADD_TEAM" });
+    await flush();
+    const [t1, t2] = hub.getState().teams;
+
+    a.send({ t: "setTeam", teamId: t1.id });
+    b.send({ t: "setTeam", teamId: t1.id });
+    await flush();
+
+    // both lobby snapshots agree: 2 in the first group, 0 in the second
+    const byId = Object.fromEntries(b.lobby.teams.map((t) => [t.id, t]));
+    expect(byId[t1.id].count).toBe(2);
+    expect(byId[t2.id].count).toBe(0);
+    // and the roster says who is in where (each entry carries id + teamId)
+    const inT1 = b.lobby.roster.filter((p) => p.teamId === t1.id).map((p) => p.name).sort();
+    expect(inT1).toEqual(["Ann", "Ben"]);
+    expect(b.lobby.maxTeams).toBeGreaterThanOrEqual(2);
+  });
+
   it("a disconnecting player is removed from the room", async () => {
     const a = makeClient("Ann"), b = makeClient("Ben");
     hub.attach(a.hostSide); hub.attach(b.hostSide);

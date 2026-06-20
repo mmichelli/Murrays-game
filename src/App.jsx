@@ -1,7 +1,7 @@
 import React, { useReducer, useEffect, useState, useRef, useMemo, useCallback } from "react";
 import {
-  ROUNDS, PALETTE, MIN_WORDS, MAX_TEAMS, TURN_SECONDS, MURRAY_DECK, ICE,
-  uid, encode, decode, waitIce, reducer, initial, viewFor, createHostHub,
+  ROUNDS, PALETTE, MIN_WORDS, MAX_TEAMS, TURN_SECONDS, MURRAY_DECK,
+  uid, initial, viewFor, createHostHub,
 } from "./engine.js";
 
 /* ================================================================== *
@@ -25,9 +25,46 @@ import {
  * https / localhost (WebRTC needs a secure context).
  * ================================================================== */
 
+/* ----------------------- link-join plumbing ----------------------- *
+ * The room is reached by a shareable link (?room=CODE) instead of
+ * copy-pasting SDP blobs. PeerJS brokers ONLY the WebRTC handshake;
+ * once connected, game data — words included — flows directly phone
+ * to phone, so the word-privacy guarantee is unchanged.
+ * ------------------------------------------------------------------ */
+const PEER_PREFIX = "mrysg-"; // namespaces our room ids on the shared broker
+const peerIdFor = (code) => PEER_PREFIX + String(code).trim().toLowerCase();
+// Human-friendly code, ambiguous characters (0/o/1/l/i) left out.
+function makeRoomCode() {
+  const a = "abcdefghjkmnpqrstuvwxyz23456789";
+  let s = ""; for (let i = 0; i < 6; i++) s += a[(Math.random() * a.length) | 0];
+  return s;
+}
+function roomLinkFor(code) {
+  const u = new URL(window.location.href);
+  u.search = ""; u.hash = "";
+  u.searchParams.set("room", code);
+  return u.toString();
+}
+function readRoomParam() {
+  try { return new URL(window.location.href).searchParams.get("room") || ""; } catch { return ""; }
+}
+// Adapt a PeerJS DataConnection to the channel shape the host hub speaks:
+// { readyState, send(str), onmessage(ev), onclose() }.
+function peerChannel(conn) {
+  const ch = {
+    get readyState() { return conn.open ? "open" : "connecting"; },
+    send: (s) => { try { conn.send(s); } catch {} },
+  };
+  conn.on("data", (d) => ch.onmessage && ch.onmessage({ data: d }));
+  conn.on("close", () => ch.onclose && ch.onclose());
+  conn.on("error", () => ch.onclose && ch.onclose());
+  return ch;
+}
+
 /* ============================== APP ============================== */
 export default function App() {
-  const [role, setRole] = useState(null);
+  const initialRoom = useRef(readRoomParam()).current;
+  const [role, setRole] = useState(initialRoom ? "client" : null);
   return (
     <div className="fb-root" style={{ "--accent": "#FF6A3D" }}>
       <style>{CSS}</style>
@@ -36,7 +73,7 @@ export default function App() {
         {role && <div className="fb-topbackwrap"><button className="fb-topback" onClick={() => setRole(null)}>← Leave to start</button></div>}
         {!role && <Landing onPick={setRole} />}
         {role === "host" && <HostApp onExit={() => setRole(null)} />}
-        {role === "client" && <ClientApp onExit={() => setRole(null)} />}
+        {role === "client" && <ClientApp onExit={() => setRole(null)} initialRoom={initialRoom} />}
       </div>
     </div>
   );
@@ -57,6 +94,7 @@ function Landing({ onPick }) {
 /* ============================== HOST ============================== */
 function HostApp({ onExit }) {
   const hostId = useRef(uid()).current;
+  const roomCode = useRef(makeRoomCode()).current;
   const [state, setState] = useState(initial);
   const hubRef = useRef(null);
   if (!hubRef.current) hubRef.current = createHostHub({ onState: setState });
@@ -65,6 +103,8 @@ function HostApp({ onExit }) {
 
   const [name, setName] = useState("");
   const [open, setOpen] = useState(false);
+  const [peerStatus, setPeerStatus] = useState("connecting"); // connecting | online | error
+  const peerRef = useRef(null);
 
   const view = useMemo(() => viewFor(state, hostId), [state, hostId]);
 
@@ -75,14 +115,22 @@ function HostApp({ onExit }) {
     window.addEventListener("keydown", onKey); return () => window.removeEventListener("keydown", onKey);
   }, [view.canCorrect, hostId, dispatch]);
 
-  const makeAnswer = useCallback(async (joinCode) => {
-    const pc = new RTCPeerConnection({ iceServers: ICE });
-    pc.ondatachannel = (e) => hub.attach(e.channel);
-    await pc.setRemoteDescription(decode(joinCode));
-    await pc.setLocalDescription(await pc.createAnswer());
-    await waitIce(pc);
-    return encode(pc.localDescription);
-  }, [hub]);
+  // Once the room is open, claim our room id on the broker and accept
+  // every phone that connects to the shared link.
+  useEffect(() => {
+    if (!open) return;
+    let peer, cancelled = false;
+    (async () => {
+      const { default: Peer } = await import("peerjs");
+      if (cancelled) return;
+      peer = new Peer(peerIdFor(roomCode), { debug: 1 });
+      peerRef.current = peer;
+      peer.on("open", () => setPeerStatus("online"));
+      peer.on("connection", (conn) => hub.attach(peerChannel(conn)));
+      peer.on("error", (err) => { if (err?.type === "unavailable-id") setPeerStatus("error"); });
+    })();
+    return () => { cancelled = true; try { peer && peer.destroy(); } catch {} };
+  }, [open, roomCode, hub]);
 
   const openRoom = () => {
     if (!name.trim()) return;
@@ -95,7 +143,7 @@ function HostApp({ onExit }) {
 
   if (state.phase === "lobby") {
     return open
-      ? <HostLobby state={state} dispatch={dispatch} hostId={hostId} makeAnswer={makeAnswer} onExit={onExit} />
+      ? <HostLobby state={state} dispatch={dispatch} hostId={hostId} roomCode={roomCode} peerStatus={peerStatus} onExit={onExit} />
       : (
         <div className="fb-card fb-stack">
           <h1 className="fb-h1">You're hosting</h1>
@@ -123,22 +171,26 @@ function HostApp({ onExit }) {
   </>);
 }
 
-function HostLobby({ state, dispatch, hostId, makeAnswer, onExit }) {
-  const [join, setJoin] = useState(""), [reply, setReply] = useState(""), [busy, setBusy] = useState(false), [err, setErr] = useState("");
+function HostLobby({ state, dispatch, hostId, roomCode, peerStatus, onExit }) {
   const [tab, setTab] = useState(0);
   const color = (i) => PALETTE[i % PALETTE.length];
   const teamsReady = state.teams.filter((t) => state.players.some((p) => p.teamId === t.id)).length >= 2;
   const placed = state.players.every((p) => p.teamId);
   const bowlReady = state.bowl.length >= MIN_WORDS;
-  const connected = state.players.length >= 2;
+  const clients = state.players.filter((p) => !p.isHost).length;
+  const connected = clients >= 1;
   const canStart = teamsReady && placed && bowlReady && connected;
   const steps = [
-    { label: "Teams", done: teamsReady && placed },
+    { label: "Invite", done: connected },
+    { label: "Groups", done: teamsReady && placed },
     { label: "Bowl", done: bowlReady },
-    { label: "Players", done: connected },
   ];
 
-  const gen = async () => { setErr(""); setBusy(true); try { setReply(await makeAnswer(join)); } catch { setErr("That join code didn't parse. Copy the whole thing."); } setBusy(false); };
+  const teams = state.teams.map((t, i) => ({
+    id: t.id, name: t.name, color: color(i),
+    count: state.players.filter((p) => p.teamId === t.id).length,
+  }));
+  const roster = state.players.map((p) => ({ id: p.id, name: p.name, teamId: p.teamId, isHost: p.isHost }));
 
   return (
     <div className="fb-stack">
@@ -150,34 +202,28 @@ function HostLobby({ state, dispatch, hostId, makeAnswer, onExit }) {
         ))}
       </div>
 
-      {tab === 0 && (
+      {tab === 0 && (<>
+        <RoomShare code={roomCode} status={peerStatus} connected={clients} />
+        <button className="fb-btn fb-ghost" onClick={() => setTab(1)}>Next · groups →</button>
+      </>)}
+
+      {tab === 1 && (
         <div className="fb-card fb-stack">
-          <h2 className="fb-h2">Teams · tap yours</h2>
-          {state.teams.map((t, i) => {
-            const mine = state.players.find((p) => p.id === hostId)?.teamId === t.id;
-            return (
-            <div className={`fb-teamrow ${mine ? "on" : ""}`} key={t.id} style={{ "--tc": color(i) }}>
-              <button className="fb-dot tap" aria-label="Join team" onClick={() => dispatch({ type: "SET_TEAM", id: hostId, teamId: t.id })} />
-              <input className="fb-input bare" value={t.name} maxLength={16} onChange={(e) => dispatch({ type: "RENAME_TEAM", id: t.id, name: e.target.value })} />
-              <span className="fb-tcount">{state.players.filter((p) => p.teamId === t.id).length}</span>
-              {state.teams.length > 2 && <button className="fb-x" onClick={() => dispatch({ type: "REMOVE_TEAM", id: t.id })}>×</button>}
-            </div>
-            );
-          })}
-          {state.teams.length < MAX_TEAMS && <button className="fb-btn fb-ghost" onClick={() => dispatch({ type: "ADD_TEAM" })}>+ add a team</button>}
-          <div className="fb-rosterwrap">
-            {state.players.map((p) => {
-              const ti = state.teams.findIndex((t) => t.id === p.teamId);
-              return <span key={p.id} className="fb-chip" style={{ "--tc": ti >= 0 ? color(ti) : "#9b927f" }}>
-                <span className="fb-dot" /> {p.name}{p.isHost ? " (you)" : ""}{p.teamId ? "" : " · no team"}
-              </span>;
-            })}
-          </div>
-          <button className="fb-btn fb-ghost" onClick={() => setTab(1)}>Next · the bowl →</button>
+          <h2 className="fb-h2">Groups · {teams.length} · tap to join</h2>
+          <GroupBoard
+            teams={teams} roster={roster} myId={hostId}
+            myTeamId={state.players.find((p) => p.id === hostId)?.teamId}
+            onPick={(teamId) => dispatch({ type: "SET_TEAM", id: hostId, teamId })}
+            onRename={(id, name) => dispatch({ type: "RENAME_TEAM", id, name })}
+            onAddTeam={() => dispatch({ type: "ADD_TEAM" })}
+            canAddTeam={teams.length < MAX_TEAMS}
+            onRemoveTeam={(id) => dispatch({ type: "REMOVE_TEAM", id })}
+          />
+          <button className="fb-btn fb-ghost" onClick={() => setTab(2)}>Next · the bowl →</button>
         </div>
       )}
 
-      {tab === 1 && (
+      {tab === 2 && (
         <div className="fb-card fb-stack">
           <h2 className="fb-h2">The bowl</h2>
           <p className="fb-muted"><b className="fb-num">{state.bowl.length}</b> in the bowl — everyone adds at once. Need {MIN_WORDS}+ to start.</p>
@@ -185,27 +231,15 @@ function HostLobby({ state, dispatch, hostId, makeAnswer, onExit }) {
           <button className="fb-btn fb-ghost" onClick={() => dispatch({ type: "ADD_WORDS", words: MURRAY_DECK })}>
             🇿🇦 Load Murray's deck — {MURRAY_DECK.length} words
           </button>
-          <button className="fb-btn fb-ghost" onClick={() => setTab(2)}>Next · add players →</button>
-        </div>
-      )}
-
-      {tab === 2 && (
-        <div className="fb-card fb-stack">
-          <h2 className="fb-h2">Connect a phone</h2>
-          <p className="fb-muted">Player taps <b>Join</b> and reads you their <b>join code</b>:</p>
-          <textarea className="fb-area" placeholder="Paste join code…" value={join} onChange={(e) => setJoin(e.target.value)} />
-          <button className="fb-btn" disabled={!join.trim() || busy} onClick={gen}>{busy ? "Working…" : "Generate reply code"}</button>
-          {err && <p className="fb-err">{err}</p>}
-          {reply && (<>
-            <p className="fb-muted">Read this <b>reply code</b> back to them:</p>
-            <CopyBox value={reply} />
-            <button className="fb-btn fb-ghost" onClick={() => { setJoin(""); setReply(""); }}>Connect another</button>
-          </>)}
         </div>
       )}
 
       <button className="fb-btn fb-big" disabled={!canStart} onClick={() => dispatch({ type: "START_GAME" })}>
-        {canStart ? "Start game" : !bowlReady ? `Add ${MIN_WORDS - state.bowl.length} more words` : !placed ? "Everyone needs a team" : "Need 2 teams with players"}
+        {canStart ? "Start game"
+          : !connected ? "Waiting for players to join"
+          : !bowlReady ? `Add ${MIN_WORDS - state.bowl.length} more words`
+          : !placed ? "Everyone needs a group"
+          : "Need 2 groups with players"}
       </button>
       <button className="fb-link" onClick={onExit}>Leave</button>
     </div>
@@ -213,26 +247,42 @@ function HostLobby({ state, dispatch, hostId, makeAnswer, onExit }) {
 }
 
 /* ============================= CLIENT ============================= */
-function ClientApp({ onExit }) {
-  const pc = useRef(null), ch = useRef(null);
-  const [name, setName] = useState(""), [step, setStep] = useState("form");
-  const [joinCode, setJoinCode] = useState(""), [answer, setAnswer] = useState(""), [status, setStatus] = useState("");
-  const [lobby, setLobby] = useState(null), [view, setView] = useState(null), [myTeam, setMyTeam] = useState(null);
+function ClientApp({ onExit, initialRoom }) {
+  const connRef = useRef(null), peerRef = useRef(null);
+  const [name, setName] = useState("");
+  const [code, setCode] = useState(initialRoom || "");
+  const [step, setStep] = useState("form"); // form | connecting | lobby
+  const [status, setStatus] = useState("");
+  const [lobby, setLobby] = useState(null), [view, setView] = useState(null);
 
-  const makeOffer = async () => {
-    const conn = new RTCPeerConnection({ iceServers: ICE });
-    const dc = conn.createDataChannel("game"); pc.current = conn; ch.current = dc;
-    dc.onopen = () => { dc.send(JSON.stringify({ t: "hello", name: name.trim() })); setStatus("Connected."); setStep("lobby"); };
-    dc.onmessage = (e) => { const m = JSON.parse(e.data); if (m.t === "lobby") setLobby(m.lobby); else if (m.t === "view") setView(m.view); else if (m.t === "welcome") { } };
-    dc.onclose = () => setStatus("Disconnected.");
-    conn.onconnectionstatechange = () => { if (["failed", "disconnected"].includes(conn.connectionState)) setStatus("Connection lost. Reload to rejoin."); };
-    await conn.setLocalDescription(await conn.createOffer());
-    await waitIce(conn);
-    setJoinCode(encode(conn.localDescription)); setStep("offer");
+  const send = (o) => { const c = connRef.current; if (c && c.open) { try { c.send(JSON.stringify(o)); } catch {} } };
+
+  // who am I, and which group am I in — read straight off the host's snapshot
+  const myId = lobby?.youId;
+  const myTeam = lobby?.roster.find((p) => p.id === myId)?.teamId ?? null;
+
+  const join = async () => {
+    if (!name.trim() || !code.trim()) return;
+    setStep("connecting"); setStatus("Reaching the room…");
+    const { default: Peer } = await import("peerjs");
+    const peer = new Peer({ debug: 1 }); peerRef.current = peer;
+    peer.on("open", () => {
+      const conn = peer.connect(peerIdFor(code), { reliable: true });
+      connRef.current = conn;
+      conn.on("open", () => { conn.send(JSON.stringify({ t: "hello", name: name.trim() })); setStatus("Connected."); setStep("lobby"); });
+      conn.on("data", (d) => { try { const m = JSON.parse(d); if (m.t === "lobby") setLobby(m.lobby); else if (m.t === "view") setView(m.view); } catch {} });
+      conn.on("close", () => setStatus("Disconnected. Reload the link to rejoin."));
+      conn.on("error", () => { setStatus("Couldn't reach that room. Check the code with the host."); setStep("form"); });
+    });
+    peer.on("error", (err) => {
+      setStatus(err?.type === "peer-unavailable"
+        ? "No room with that code — ask the host to re-share the link."
+        : "Connection trouble. Try again, or check your signal.");
+      setStep("form");
+    });
   };
-  const connect = async () => { try { await pc.current.setRemoteDescription(decode(answer)); setStatus("Linking…"); } catch { setStatus("That reply code didn't parse."); } };
-  const send = (o) => ch.current?.readyState === "open" && ch.current.send(JSON.stringify(o));
-  const pickTeam = (teamId) => { setMyTeam(teamId); send({ t: "setTeam", teamId }); };
+
+  useEffect(() => () => { try { peerRef.current?.destroy(); } catch {} }, []);
 
   if (view && view.phase !== "lobby") return <GameView view={view} onIntent={(action) => send({ t: "intent", action })} />;
 
@@ -240,26 +290,28 @@ function ClientApp({ onExit }) {
     <div className="fb-card fb-stack">
       <h1 className="fb-h1">Join a room</h1>
       {step === "form" && (<>
-        <label className="fb-label">Your name<input className="fb-input" value={name} onChange={(e) => setName(e.target.value)} maxLength={20} /></label>
-        <button className="fb-btn" disabled={!name.trim()} onClick={makeOffer}>Generate my join code</button>
+        {initialRoom && <p className="fb-muted">Joining room <b className="fb-code">{initialRoom}</b> — just pop your name in.</p>}
+        <label className="fb-label">Your name<input className="fb-input" value={name} onChange={(e) => setName(e.target.value)} maxLength={20} autoFocus /></label>
+        {!initialRoom && <label className="fb-label">Room code<input className="fb-input" value={code} onChange={(e) => setCode(e.target.value)} maxLength={12} placeholder="e.g. kx7m2p" /></label>}
+        <button className="fb-btn" disabled={!name.trim() || !code.trim()} onClick={join}>Join room</button>
+        {status && <p className="fb-err">{status}</p>}
         <button className="fb-btn fb-ghost" onClick={onExit}>Back</button>
       </>)}
-      {step === "offer" && (<>
-        <p className="fb-muted">1. Give the host your <b>join code</b>:</p>
-        <CopyBox value={joinCode} />
-        <p className="fb-muted">2. Paste the <b>reply code</b> they read back:</p>
-        <textarea className="fb-area" placeholder="Paste reply code…" value={answer} onChange={(e) => setAnswer(e.target.value)} />
-        <button className="fb-btn" disabled={!answer.trim()} onClick={connect}>Connect</button>
-        {status && <p className="fb-muted">{status}</p>}
-      </>)}
+      {step === "connecting" && <p className="fb-muted">{status}</p>}
       {step === "lobby" && lobby && (<>
         <div className="fb-roundtag">In the room</div>
-        <h2 className="fb-h2">Pick your team</h2>
-        <TeamButtons teams={lobby.teams} colorFn={(i) => lobby.teams[i].color} value={myTeam} onPick={pickTeam} />
-        <h2 className="fb-h2">Add words</h2>
+        <h2 className="fb-h2">Groups · {lobby.teams.length} · tap to join</h2>
+        <GroupBoard
+          teams={lobby.teams} roster={lobby.roster} myId={myId} myTeamId={myTeam}
+          onPick={(teamId) => send({ t: "setTeam", teamId })}
+          onRename={(id, nm) => send({ t: "renameTeam", id, name: nm })}
+          onAddTeam={() => send({ t: "addTeam" })}
+          canAddTeam={lobby.teams.length < lobby.maxTeams}
+        />
+        <h2 className="fb-h2">The bowl</h2>
         <p className="fb-muted"><b className="fb-num">{lobby.bowlCount}</b> in the bowl. Everyone's adding at once.</p>
         <WordAdder onAdd={(ws) => send({ t: "words", words: ws })} />
-        <p className="fb-tiny">{myTeam ? "Waiting for the host to start…" : "Pick a team to be ready."}</p>
+        <p className="fb-tiny">{myTeam ? "Waiting for the host to start…" : "Join a group to be ready."}</p>
       </>)}
     </div>
   );
@@ -380,12 +432,90 @@ function Standings({ v }) {
 }
 
 /* --------------------------- small parts -------------------------- */
-function TeamButtons({ teams, colorFn, value, onPick }) {
+// Shared by host + clients: every group with a live count, who's in it,
+// an editable name, and a tap-to-join button. Host also gets a remove (×).
+function GroupBoard({ teams, roster, myId, myTeamId, onPick, onRename, onAddTeam, canAddTeam, onRemoveTeam }) {
+  const members = (tid) => roster.filter((p) => p.teamId === tid);
+  const unplaced = roster.filter((p) => !p.teamId);
   return (
-    <div className="fb-teampick">
-      {teams.map((t, i) => (
-        <button key={t.id} className={`fb-teambtn ${value === t.id ? "on" : ""}`} style={{ "--tc": colorFn(i) }} onClick={() => onPick(t.id)}>{t.name}</button>
-      ))}
+    <div className="fb-stack">
+      {teams.map((t) => {
+        const mine = myTeamId === t.id;
+        return (
+          <div className={`fb-group ${mine ? "mine" : ""}`} key={t.id} style={{ "--tc": t.color }}>
+            <div className="fb-grouphead">
+              <span className="fb-dot" />
+              <input className="fb-input bare" value={t.name} maxLength={16}
+                onChange={(e) => onRename(t.id, e.target.value)} aria-label="Group name" />
+              <span className="fb-tcount">{t.count}</span>
+              {onRemoveTeam && teams.length > 2 && <button className="fb-x" title="Remove group" onClick={() => onRemoveTeam(t.id)}>×</button>}
+            </div>
+            <div className="fb-rosterwrap">
+              {members(t.id).length === 0
+                ? <span className="fb-empty">— empty —</span>
+                : members(t.id).map((p) => (
+                  <span key={p.id} className="fb-chip" style={{ "--tc": t.color }}>
+                    <span className="fb-dot" /> {p.name}{p.id === myId ? " (you)" : ""}{p.isHost ? " · host" : ""}
+                  </span>
+                ))}
+            </div>
+            <button className={`fb-joinbtn ${mine ? "on" : ""}`} onClick={() => onPick(t.id)}>
+              {mine ? "✓ You're in this group" : "Join this group"}
+            </button>
+          </div>
+        );
+      })}
+      {unplaced.length > 0 && (
+        <div className="fb-rosterwrap">
+          {unplaced.map((p) => (
+            <span key={p.id} className="fb-chip" style={{ "--tc": "#9b927f" }}>
+              <span className="fb-dot" /> {p.name}{p.id === myId ? " (you)" : ""} · no group yet
+            </span>
+          ))}
+        </div>
+      )}
+      {canAddTeam && <button className="fb-btn fb-ghost" onClick={onAddTeam}>+ add a group</button>}
+    </div>
+  );
+}
+// Host's share panel: a QR to scan and a link to send. The PeerJS broker
+// handles only the handshake; game data stays peer-to-peer.
+function RoomShare({ code, status, connected }) {
+  const link = useMemo(() => roomLinkFor(code), [code]);
+  const [qr, setQr] = useState("");
+  const [copied, setCopied] = useState(false);
+  useEffect(() => {
+    let live = true;
+    (async () => {
+      try {
+        const QR = (await import("qrcode")).default;
+        const url = await QR.toDataURL(link, { margin: 1, width: 240, color: { dark: "#221C18", light: "#FBF7EC" } });
+        if (live) setQr(url);
+      } catch {}
+    })();
+    return () => { live = false; };
+  }, [link]);
+  const copy = async () => { try { await navigator.clipboard.writeText(link); setCopied(true); setTimeout(() => setCopied(false), 1400); } catch {} };
+  const share = async () => {
+    try { if (navigator.share) await navigator.share({ title: "Murray's Game", text: "Join my room", url: link }); else copy(); } catch {}
+  };
+  const canShare = typeof navigator !== "undefined" && !!navigator.share;
+  const dot = status === "online" ? "var(--green)" : status === "error" ? "var(--red)" : "var(--amber)";
+  const msg = status === "online" ? "Room is live — share away"
+    : status === "error" ? "That code is taken — leave and re-open the room"
+    : "Opening the room…";
+  return (
+    <div className="fb-card fb-stack fb-center">
+      <h2 className="fb-h2">Share the room</h2>
+      <p className="fb-statusline"><span className="fb-statusdot" style={{ background: dot }} /> {msg}</p>
+      {qr && <img className="fb-qr" src={qr} alt="QR code to join the room" width={200} height={200} />}
+      <p className="fb-tiny">Scan it — or send the link. Code: <b className="fb-code">{code}</b></p>
+      <input className="fb-input mono fb-linkfield" readOnly value={link} onFocus={(e) => e.target.select()} aria-label="Room link" />
+      <div className="fb-row fb-sharebtns">
+        <button className="fb-btn" onClick={copy}>{copied ? "Copied ✓" : "Copy link"}</button>
+        {canShare && <button className="fb-btn fb-ghost" onClick={share}>Share…</button>}
+      </div>
+      <p className="fb-tiny">{connected} {connected === 1 ? "phone" : "phones"} connected</p>
     </div>
   );
 }
@@ -403,17 +533,6 @@ function WordAdder({ onAdd }) {
     </div>
   );
 }
-function CopyBox({ value }) {
-  const [ok, setOk] = useState(false);
-  const copy = async () => { try { await navigator.clipboard.writeText(value); } catch {} setOk(true); setTimeout(() => setOk(false), 1400); };
-  return (
-    <div className="fb-copy">
-      <textarea className="fb-area mono" readOnly value={value} onFocus={(e) => e.target.select()} />
-      <button className="fb-btn" onClick={copy}>{ok ? "Copied ✓" : "Copy code"}</button>
-    </div>
-  );
-}
-
 /* ============================== CSS ============================== */
 const CSS = `
 @import url('https://fonts.googleapis.com/css2?family=Anton&family=Archivo:wght@400;600;800&family=Space+Mono:wght@400;700&display=swap');
@@ -480,18 +599,29 @@ const CSS = `
 .fb-stepn{display:inline-flex;align-items:center;justify-content:center;width:20px;height:20px;border-radius:50%;border:1.6px solid currentColor;font-size:11px;flex:none;}
 .fb-step.done .fb-stepn{background:var(--green);border-color:var(--green);color:#fff;}
 
-.fb-teamrow{display:flex;align-items:center;gap:10px;background:#fff;border:1.5px solid var(--line);border-radius:8px;padding:5px 12px;}
-.fb-teamrow.on{border-color:var(--tc);box-shadow:2px 2px 0 var(--tc);}
 .fb-tcount{font-family:'Space Mono',monospace;color:var(--muted);font-size:13px;min-width:16px;text-align:right;}
 .fb-dot{width:11px;height:11px;border-radius:50%;background:var(--tc);flex:none;}
-.fb-dot.tap{width:18px;height:18px;padding:0;margin:0;cursor:pointer;appearance:none;-webkit-appearance:none;border:none;background:transparent;box-shadow:inset 0 0 0 2px #fff,inset 0 0 0 3.5px var(--tc);}
-.fb-teamrow.on .fb-dot.tap{background:var(--tc);}
-.fb-dot.tap:focus-visible{outline:2px solid var(--ink);outline-offset:2px;}
 .fb-rosterwrap{display:flex;flex-wrap:wrap;gap:7px;}
 .fb-chip{background:#fff;border:1.5px solid var(--line);border-radius:999px;padding:6px 11px;color:var(--ink);font-size:13px;display:inline-flex;align-items:center;gap:7px;}
 .fb-teampick{display:flex;gap:8px;flex-wrap:wrap;}
 .fb-teambtn{flex:1 1 40%;background:#fff;border:1.5px solid var(--line);border-radius:8px;padding:12px;color:var(--muted);font-weight:800;font-family:inherit;font-size:15px;cursor:pointer;}
 .fb-teambtn.on{border-color:var(--tc);color:var(--tc);box-shadow:2px 2px 0 var(--tc);}
+
+.fb-group{background:#fff;border:1.5px solid var(--line);border-radius:10px;padding:11px 13px;display:flex;flex-direction:column;gap:9px;}
+.fb-group.mine{border-color:var(--tc);box-shadow:2px 2px 0 var(--tc);}
+.fb-grouphead{display:flex;align-items:center;gap:10px;}
+.fb-grouphead .fb-input.bare{flex:1;}
+.fb-empty{color:var(--muted);font-size:12px;font-family:'Space Mono',monospace;letter-spacing:.06em;}
+.fb-joinbtn{background:transparent;border:1.5px dashed var(--line);color:var(--muted);border-radius:8px;padding:9px;font-weight:800;font-family:inherit;font-size:14px;cursor:pointer;}
+.fb-joinbtn:hover{border-color:var(--tc);color:var(--tc);}
+.fb-joinbtn.on{background:var(--tc);border-color:var(--tc);color:#fff;border-style:solid;}
+
+.fb-qr{width:200px;height:200px;border-radius:10px;background:var(--slip);padding:8px;box-shadow:0 10px 22px rgba(40,28,18,.16);image-rendering:pixelated;}
+.fb-statusline{display:flex;align-items:center;gap:8px;margin:0;color:var(--muted);font-size:13px;font-family:'Space Mono',monospace;}
+.fb-statusdot{width:9px;height:9px;border-radius:50%;flex:none;}
+.fb-code{font-family:'Space Mono',monospace;letter-spacing:.12em;color:var(--accent);text-transform:uppercase;}
+.fb-linkfield{font-size:12px;text-align:center;}
+.fb-sharebtns{width:100%;}
 
 .fb-roundline{display:flex;flex-direction:column;gap:6px;align-items:flex-start;}
 .fb-center .fb-roundline{align-items:center;}
