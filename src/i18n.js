@@ -56,6 +56,7 @@ const STRINGS = {
       harder: "Same words, all five rounds, each one harder:",
       openRoom: "Open a room", joinRoom: "Join a room",
       slips: ["talk", "mime", "peek"],
+      heroTag: "The party word game", heroSub: "One wordlist · five rounds · pure chaos",
       named: "Named after Murray, the varsity mate who first taught us to play.",
     },
     host: {
@@ -151,6 +152,7 @@ const STRINGS = {
       harder: "Samme ord, alle fem runder, hver vanskeligere enn den forrige:",
       openRoom: "Åpne et rom", joinRoom: "Bli med i et rom",
       slips: ["snakk", "mim", "kikk"],
+      heroTag: "Festens ordspill", heroSub: "Én ordliste · fem runder · rent kaos",
       named: "Oppkalt etter Murray, studiekompisen som først lærte oss å spille.",
     },
     host: {

@@ -94,6 +94,25 @@ function RoundIcon({ n, className = "" }) {
   return <span className={`fb-pixicon ${className}`} role="img" aria-hidden="true" dangerouslySetInnerHTML={{ __html: svg }} />;
 }
 
+/* ------------------------- Murray, the mate ----------------------- *
+ * The namesake, as a pixel minifigure: yellow head, dot eyes and a
+ * smile, claw arms, an accent-coloured torso (it follows the theme).
+ * Drawn on a 16-wide grid; each letter maps to a colour.
+ * ------------------------------------------------------------------ */
+const MURRAY_PIX = [
+  "....KKKKKKKK....", "...KHHHHHHHHK...", "...KHHHHHHHHK...", "...KYYYYYYYYK...",
+  "...KYKYYYYKYK...", "...KYYYYYYYYK...", "...KYYKKKKYYK...", "...KYYYYYYYYK...",
+  "....KKKKKKKK....", "......KKKK......", ".KKKKKKKKKKKKKK.", ".KYYKBBBBBBKYYK.",
+  ".KYYKBBBBBBKYYK.", ".KYYKBBBBBBKYYK.", ".KYYKBBBBBBKYYK.", ".KKKKBBBBBBKKKK.",
+  "....KBBBBBBK....",
+];
+const MURRAY_COL = { K: "#14181D", H: "#6B4A2B", Y: "#F5C518", B: "var(--accent)" };
+function MurrayPix({ size = 60, className = "" }) {
+  const rows = MURRAY_PIX, w = rows[0].length, h = rows.length, px = [];
+  rows.forEach((row, y) => { for (let x = 0; x < row.length; x++) { const c = MURRAY_COL[row[x]]; if (c) px.push(<rect key={`${x},${y}`} x={x} y={y} width="1.02" height="1.02" style={{ fill: c }} />); } });
+  return <svg className={className} width={size} height={Math.round(size * h / w)} viewBox={`0 0 ${w} ${h}`} shapeRendering="crispEdges" role="img" aria-label="Murray">{px}</svg>;
+}
+
 /* ================================================================== *
  * MURRAY'S GAME - a 5-round Fishbowl for South African students.
  * P2P rooms, no backend.
@@ -204,7 +223,7 @@ function AppInner() {
       <style>{CSS}</style>
       <div className="fb-shell">
         <div className="fb-topbar">
-          <button type="button" className="fb-brand" onClick={() => setRole(null)} title={t("common.home")} aria-label={t("common.home")}>MURRAY'S GAME</button>
+          {role && <button type="button" className="fb-brand" onClick={() => setRole(null)} title={t("common.home")} aria-label={t("common.home")}>MURRAY'S GAME</button>}
           <LangSwitcher />
         </div>
         {!role && <Landing onPick={setRole} />}
@@ -217,8 +236,14 @@ function AppInner() {
 function Landing({ onPick }) {
   const t = useT();
   return (
+    <div className="fb-stack">
+      <div className="fb-hero">
+        <div className="fb-sliprow" aria-hidden="true">{(t("landing.slips") || []).map((w, i) => <span key={i}>{w}</span>)}</div>
+        <h1 className="fb-herobrand">MURRAY'S GAME</h1>
+        <div className="fb-herotag">{t("landing.heroTag")}</div>
+        <div className="fb-herosub">{t("landing.heroSub")}</div>
+      </div>
     <div className="fb-card fb-stack fb-center">
-      <div className="fb-sliprow" aria-hidden="true">{(t("landing.slips") || []).map((w, i) => <span key={i}>{w}</span>)}</div>
       <p className="fb-muted">{t("landing.lead")} <b>Fishbowl</b>, <b>Celebrity</b>, <b>Salad Bowl</b>, <b>Monikers</b> {t("landing.or")} <b>{t("landing.hatGame")}</b>. {t("landing.tail")}</p>
       <div className="fb-roundlist">
         <div className="fb-roundlisttop">{t("landing.harder")}</div>
@@ -233,7 +258,11 @@ function Landing({ onPick }) {
       </div>
       <button className="fb-btn" onClick={() => onPick("host")}>{t("landing.openRoom")}</button>
       <button className="fb-btn fb-ghost" onClick={() => onPick("client")}>{t("landing.joinRoom")}</button>
-      <p className="fb-tiny">{t("landing.named")}</p>
+      <div className="fb-murray">
+        <span className="fb-murraypic"><MurrayPix size={58} /></span>
+        <p className="fb-tiny">{t("landing.named")}</p>
+      </div>
+    </div>
     </div>
   );
 }
@@ -1124,6 +1153,27 @@ const CSS = `
 .fb-lang.on:hover{transform:translate(-1px,-1px);box-shadow:4px 4px 0 var(--accent);color:var(--paper);}
 .fb-lang.on:active{transform:translate(3px,3px);box-shadow:0 0 0 var(--accent);}
 .fb-lang:focus-visible{outline:3px solid var(--accent);outline-offset:3px;}
+
+/* landing hero - a bold solid accent band, brand oversized on top */
+.fb-hero{position:relative;background:var(--accent);border:3px solid var(--ink);border-radius:8px;box-shadow:8px 8px 0 var(--ink);
+  padding:22px 18px 24px;margin:2px 2px 22px;text-align:center;display:flex;flex-direction:column;align-items:center;gap:12px;overflow:hidden;}
+/* faint mega-digits stamped behind the brand for texture */
+.fb-hero::before{content:"12345";position:absolute;inset:0;display:flex;align-items:center;justify-content:center;
+  font-family:Anton,sans-serif;font-size:170px;letter-spacing:.06em;color:rgba(255,255,255,.10);pointer-events:none;white-space:nowrap;}
+.fb-hero>*{position:relative;z-index:1;}
+.fb-herobrand{font-family:Anton,'Arial Narrow',sans-serif;font-weight:400;font-size:clamp(46px,15.5vw,82px);line-height:.84;margin:0;
+  color:var(--paper);text-transform:uppercase;letter-spacing:.015em;text-shadow:4px 4px 0 var(--ink);}
+.fb-herotag{font-family:Anton,sans-serif;font-size:clamp(15px,4.4vw,22px);letter-spacing:.02em;text-transform:uppercase;
+  color:var(--ink);background:var(--paper);border:2.5px solid var(--ink);border-radius:6px;padding:5px 13px;box-shadow:3px 3px 0 var(--ink);transform:rotate(-1.4deg);}
+.fb-herosub{font-family:'Space Mono',monospace;font-weight:700;font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--paper);margin:-2px 0 0;opacity:.95;}
+/* sit the decorative slips right under the brand inside the hero */
+.fb-hero .fb-sliprow{margin-bottom:0;}
+.fb-hero .fb-sliprow span{color:var(--ink);}
+/* Murray, framed beside his credit line */
+.fb-murray{display:flex;align-items:center;gap:13px;text-align:left;margin-top:2px;}
+.fb-murraypic{flex:none;display:inline-flex;background:#fff;border:2.5px solid var(--ink);border-radius:6px;box-shadow:3px 3px 0 var(--ink);padding:5px;}
+.fb-murraypic svg{display:block;}
+.fb-murray .fb-tiny{margin:0;}
 
 /* neo-brutalist paper cards: thick ink border + hard offset shadow. */
 .fb-card{position:relative;border:3px solid var(--ink);border-radius:6px;padding:22px;
