@@ -4,6 +4,15 @@ import {
   uid, initial, viewFor, createHostHub, peerOptions,
 } from "./engine.js";
 import { LANGS, detectLang, saveLang, makeT, roundText } from "./i18n.js";
+// Round glyphs from Pixelarticons (MIT) - https://pixelarticons.com - imported
+// as raw SVG so each round wears a crisp pixel-art icon that inherits the
+// surrounding text colour. Describe=speak, Charades=act, One Word=bubble,
+// Hands Only=hand, Face Only=face.
+import describeSvg from "pixelarticons/svg/mic.svg?raw";
+import charadesSvg from "pixelarticons/svg/human-arms-up.svg?raw";
+import oneWordSvg from "pixelarticons/svg/comment.svg?raw";
+import handsSvg from "pixelarticons/svg/hand.svg?raw";
+import faceSvg from "pixelarticons/svg/smile.svg?raw";
 
 /* ---------------------------- language ---------------------------- *
  * One context carries the chosen language + a translator down to every
@@ -72,30 +81,17 @@ function useFollowTeamAccent(color) {
   useEffect(() => { setAccent(color || BRAND_ACCENT); return () => setAccent(BRAND_ACCENT); }, [color, setAccent]);
 }
 
-/* --------------------- pixel-art round numbers -------------------- *
- * Each round shows its number as a bold pixel-art digit (rendered as
- * crisp inline SVG), so the marker matches the game's brutalist look and
- * is identical on every device. '#' is a filled pixel; the digit inherits
- * the surrounding text colour via currentColor.
+/* ---------------------- pixel-art round icons --------------------- *
+ * Each round wears a Pixelarticons glyph (see import note above). The raw
+ * SVG uses fill="currentColor", so the icon inherits the surrounding text
+ * colour - ink on the landing list, accent-tinted in-game - and scales
+ * with the font size via CSS.
  * ------------------------------------------------------------------ */
-const ROUND_PIX = {
-  1: ["..###.", ".####.", "...##.", "...##.", "...##.", "...##.", "...##.", "...##.", ".#####"],
-  2: [".####.", "##..##", "....##", "...##.", "..##..", ".##...", "##....", "##....", "######"],
-  3: ["#####.", "....##", "....##", ".####.", ".####.", "....##", "....##", "....##", "#####."],
-  4: ["##..##", "##..##", "##..##", "######", "....##", "....##", "....##", "....##", "....##"],
-  5: ["######", "##....", "##....", "#####.", "....##", "....##", "....##", "##..##", ".####."],
-};
-// Render a round's sprite as inline SVG that scales with the font size and
-// stays pixel-crisp at any zoom.
+const ROUND_SVG = { 1: describeSvg, 2: charadesSvg, 3: oneWordSvg, 4: handsSvg, 5: faceSvg };
 function RoundIcon({ n, className = "" }) {
-  const rows = ROUND_PIX[n];
-  if (!rows) return null;
-  const w = rows[0].length, h = rows.length, px = [];
-  rows.forEach((row, y) => { for (let x = 0; x < row.length; x++) if (row[x] === "#") px.push(<rect key={`${x},${y}`} x={x} y={y} width="1" height="1" />); });
-  return (
-    <svg className={`fb-pixicon ${className}`} viewBox={`0 0 ${w} ${h}`} fill="currentColor"
-      shapeRendering="crispEdges" role="img" aria-hidden="true">{px}</svg>
-  );
+  const svg = ROUND_SVG[n];
+  if (!svg) return null;
+  return <span className={`fb-pixicon ${className}`} role="img" aria-hidden="true" dangerouslySetInnerHTML={{ __html: svg }} />;
 }
 
 /* ================================================================== *
@@ -1194,10 +1190,11 @@ const CSS = `
 .fb-rounds li{display:flex;align-items:baseline;gap:9px;text-align:left;}
 .fb-rname{font-family:Archivo,sans-serif;font-weight:800;font-size:14.5px;color:var(--ink);white-space:nowrap;flex:none;}
 .fb-rgloss{color:var(--muted);font-size:13px;line-height:1.3;}
-/* chunky pixel-art round glyphs - scale with the text, stay crisp */
-.fb-pixicon{display:inline-block;width:0.9em;height:1.15em;vertical-align:-0.18em;flex:none;}
-.fb-roundtag .fb-pixicon{width:1em;height:1.25em;vertical-align:-0.22em;}
-.fb-pixicon-th{width:1.4em;height:1.7em;vertical-align:0;}
+/* pixel-art round glyphs - scale with the text, inherit its colour */
+.fb-pixicon{display:inline-flex;width:1.2em;height:1.2em;vertical-align:-0.24em;flex:none;}
+.fb-pixicon svg{width:100%;height:100%;display:block;}
+.fb-roundtag .fb-pixicon{width:1.35em;height:1.35em;vertical-align:-0.3em;}
+.fb-pixicon-th{width:1.7em;height:1.7em;vertical-align:0;}
 
 .fb-steps{display:flex;gap:8px;}
 .fb-step{flex:1;display:flex;align-items:center;justify-content:center;gap:7px;background:var(--panel);border:2.5px solid var(--ink);border-radius:6px;padding:11px 6px;font-family:'Space Mono',monospace;font-weight:700;font-size:12px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);cursor:pointer;}
