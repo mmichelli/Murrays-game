@@ -1182,7 +1182,7 @@ const CSS = `
 .fb-h2{font-family:'Space Mono',monospace;font-weight:700;font-size:12px;letter-spacing:.14em;margin:0;text-transform:uppercase;color:var(--muted);}
 .fb-xl{font-size:clamp(38px,11vw,58px);line-height:.96;}
 .fb-center .fb-h1.fb-xl{margin:6px 0 2px;}
-.fb-muted{color:var(--muted);margin:0;font-size:15px;line-height:1.5;}
+.fb-muted{color:var(--muted);margin:0;font-size:15px;line-height:1.62;}
 .fb-muted b{color:var(--ink);}
 .fb-tiny{color:var(--muted);font-size:12px;margin:0;font-family:'Space Mono',monospace;}
 .fb-num{font-family:Anton,sans-serif;font-weight:400;font-size:20px;color:var(--accent);vertical-align:-1px;margin-right:4px;}
@@ -1233,7 +1233,7 @@ const CSS = `
 .fb-rounds{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:9px;width:100%;}
 .fb-rounds li{display:flex;align-items:baseline;gap:9px;text-align:left;}
 .fb-rname{font-family:Archivo,sans-serif;font-weight:800;font-size:14.5px;color:var(--ink);white-space:nowrap;flex:none;}
-.fb-rgloss{color:var(--muted);font-size:13px;line-height:1.3;}
+.fb-rgloss{color:var(--muted);font-size:13px;line-height:1.42;}
 /* pixel-art round glyphs - scale with the text, inherit its colour */
 .fb-pixicon{display:inline-flex;width:1.2em;height:1.2em;vertical-align:-0.24em;flex:none;}
 .fb-pixicon svg{width:100%;height:100%;display:block;}
