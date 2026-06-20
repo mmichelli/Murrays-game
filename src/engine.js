@@ -199,7 +199,10 @@ export function reducer(state, a) {
 
     case "TICK": {
       if (!state.running) return state;
-      const t = state.timeLeft - 1;
+      // `seconds` lets the host reconcile against the wall clock — if its
+      // phone throttled or paused timers (screen lock, backgrounding), one
+      // catch-up TICK drains the real elapsed time instead of a single second.
+      const t = state.timeLeft - Math.max(1, Math.floor(a.seconds || 1));
       if (t > 0) return { ...state, timeLeft: t };
       return advanceTurn({ ...state, timeLeft: 0 }, true);
     }

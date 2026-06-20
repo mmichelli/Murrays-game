@@ -158,6 +158,29 @@ describe("game flow", () => {
     expect(g.turnNumber).toBe(2);
   });
 
+  it("a catch-up TICK drains real elapsed time after the host's clock stalls", () => {
+    const { s } = startedGame();
+    const up = s.teams[s.activeTeamIdx];
+    const giver = s.players.find((p) => p.teamId === up.id);
+    let g = reducer(s, { type: "CLAIM_AND_BEGIN", fromId: giver.id });
+    expect(g.timeLeft).toBe(TURN_SECONDS);
+
+    // phone resumes after ~25s asleep → one tick swallows the whole gap
+    g = reducer(g, { type: "TICK", seconds: 25 });
+    expect(g.timeLeft).toBe(TURN_SECONDS - 25);
+
+    // a default tick is still a single second (back-compat)
+    g = reducer(g, { type: "TICK" });
+    expect(g.timeLeft).toBe(TURN_SECONDS - 26);
+
+    // a gap larger than the remaining time ends the turn, keeping the card
+    const card = g.activeCard;
+    g = reducer(g, { type: "TICK", seconds: 999 });
+    expect(g.phase).toBe("ready");
+    expect(g.running).toBe(false);
+    expect(g.activeCard).toBe(card);
+  });
+
   it("clearing the bowl advances the round, and round 5 ends the game", () => {
     const { s } = startedGame(["only-one"]);
     const up = s.teams[s.activeTeamIdx];

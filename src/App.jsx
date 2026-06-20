@@ -124,8 +124,25 @@ function HostApp({ onExit }) {
 
   const view = useMemo(() => viewFor(state, hostId), [state, hostId]);
 
-  // Host is the authoritative timer.
-  useEffect(() => { if (!state.running) return; const id = setInterval(() => dispatch({ type: "TICK" }), 1000); return () => clearInterval(id); }, [state.running, dispatch]);
+  // Host is the authoritative timer, driven by the wall clock so a screen
+  // lock or backgrounded tab (which throttles/pauses setInterval) doesn't
+  // freeze the countdown — each tick drains the real seconds elapsed, and we
+  // reconcile the instant the tab is shown again.
+  const lastTickRef = useRef(0);
+  useEffect(() => {
+    if (!state.running) return;
+    lastTickRef.current = Date.now();
+    const tick = () => {
+      const now = Date.now();
+      const seconds = Math.max(1, Math.round((now - lastTickRef.current) / 1000));
+      lastTickRef.current = now;
+      dispatch({ type: "TICK", seconds });
+    };
+    const id = setInterval(tick, 1000);
+    const onVis = () => { if (document.visibilityState === "visible") tick(); };
+    document.addEventListener("visibilitychange", onVis);
+    return () => { clearInterval(id); document.removeEventListener("visibilitychange", onVis); };
+  }, [state.running, dispatch]);
   useEffect(() => {
     const onKey = (e) => { if (e.code === "Space" && view.canCorrect) { e.preventDefault(); dispatch({ type: "CORRECT", fromId: hostId }); } };
     window.addEventListener("keydown", onKey); return () => window.removeEventListener("keydown", onKey);
