@@ -1174,14 +1174,14 @@ const CSS = `
 .fb-x:hover{color:var(--ink);border-color:var(--tc);box-shadow:2px 2px 0 var(--tc);}
 .fb-err{color:var(--red);margin:0;font-size:13px;font-family:'Space Mono',monospace;}
 
-.fb-sliprow{display:flex;gap:9px;justify-content:center;margin-bottom:6px;}
-.fb-sliprow span{position:relative;font-family:'Space Mono',monospace;font-weight:700;font-size:11px;text-transform:uppercase;letter-spacing:.1em;
-  background:var(--slip);padding:9px 12px 8px;border-radius:0 0 4px 4px;box-shadow:0 7px 14px rgba(20,26,34,.16);}
-.fb-sliprow span::before{content:"";position:absolute;top:-1px;left:5px;right:5px;height:5px;
-  background:radial-gradient(circle at 4px -1px, var(--paper) 0 3px, transparent 3.4px) repeat-x;background-size:8px 5px;}
-.fb-sliprow span:nth-child(1){transform:rotate(-5deg);color:#1F51FF;}
-.fb-sliprow span:nth-child(2){transform:rotate(3deg);color:#3B6EA5;}
-.fb-sliprow span:nth-child(3){transform:rotate(-2deg);color:#6B5B9A;}
+.fb-sliprow{display:flex;gap:12px;justify-content:center;margin-bottom:6px;}
+.fb-sliprow span{position:relative;font-family:'Space Mono',monospace;font-weight:700;font-size:11px;text-transform:uppercase;letter-spacing:.1em;color:var(--accent);
+  background:var(--slip);padding:9px 12px 8px;border:2.5px solid var(--ink);border-radius:5px;box-shadow:3px 3px 0 var(--ink);}
+.fb-sliprow span::before{content:"";position:absolute;top:-2px;left:5px;right:5px;height:6px;
+  background:radial-gradient(circle at 5px -1px, var(--paper) 0 4px, transparent 4.4px) repeat-x;background-size:10px 6px;}
+.fb-sliprow span:nth-child(1){transform:rotate(-3deg);}
+.fb-sliprow span:nth-child(2){transform:rotate(2deg);}
+.fb-sliprow span:nth-child(3){transform:rotate(-2deg);}
 
 /* landing round-by-round breakdown */
 .fb-roundlist{width:100%;display:flex;flex-direction:column;gap:10px;}
