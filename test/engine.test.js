@@ -2,7 +2,7 @@ import { describe, it, expect } from "vitest";
 import {
   reducer, initial, viewFor, lobbyFor, encode, decode, shuffle,
   ROUNDS, PALETTE, MIN_WORDS, MAX_TEAMS, TURN_SECONDS, MURRAY_DECK,
-  WORDS_PER_PLAYER, sampleDeck, ICE, peerOptions,
+  WORDS_PER_PLAYER, sampleDeck, ICE, peerOptions, LOOKAHEAD,
 } from "../src/engine.js";
 
 // Drive the reducer through a list of actions from a starting state.
@@ -277,6 +277,30 @@ describe("privacy: viewFor", () => {
     expect(otherView.word).toBeNull(); // never leaks
     expect(otherView.isActive).toBe(false);
     expect(otherView.canCorrect).toBe(false);
+  });
+
+  it("buffers upcoming cards ONLY for the active giver, capped at LOOKAHEAD", () => {
+    const { s } = startedGame(); // 4-word bowl
+    const up = s.teams[s.activeTeamIdx];
+    const giver = s.players.find((p) => p.teamId === up.id);
+    const other = s.players.find((p) => p.teamId !== up.id);
+    const g = reducer(s, { type: "CLAIM_AND_BEGIN", fromId: giver.id });
+
+    const giverView = viewFor(g, giver.id);
+    expect(giverView.nextWords).toEqual(g.deck.slice(0, LOOKAHEAD)); // the real upcoming cards
+    expect(giverView.nextWords).toHaveLength(LOOKAHEAD);
+    expect(giverView.nextWords).not.toContain(g.activeCard); // never the current card
+
+    expect(viewFor(g, other.id).nextWords).toEqual([]); // watchers get nothing
+  });
+
+  it("the buffer empties out near a round boundary so the host drives the transition", () => {
+    const { s } = startedGame(["solo"]); // deck of one
+    const up = s.teams[s.activeTeamIdx];
+    const giver = s.players.find((p) => p.teamId === up.id);
+    const g = reducer(s, { type: "CLAIM_AND_BEGIN", fromId: giver.id });
+    expect(g.deck).toHaveLength(0);
+    expect(viewFor(g, giver.id).nextWords).toEqual([]); // nothing to optimistically flip to
   });
 
   it("canClaim is true only for an up-team member in the ready phase", () => {

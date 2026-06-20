@@ -40,6 +40,8 @@ Joining is a **one-tap shareable link** (`?room=CODE`). A free public [PeerJS](h
 
 The host (`createHostHub` in [`src/engine.js`](src/engine.js)) runs the single source of truth and broadcasts a **privacy-filtered view** to each device, so only the active clue-giver ever sees the word. Players send only *intents* (`claim turn`, `correct`, `resume`) and lobby actions (`set group`, `add group`, `rename group`, `add words`) — the host validates and applies them. The SDP signaling codec and in-memory loopback tests still cover the channel-level protocol regardless of how the handshake is brokered.
 
+To keep clue-giving snappy over the wire, the giver's view also carries a tiny **lookahead buffer** (the next couple of cards, giver-only — never watchers, never the other team). Their phone flips to the next word the instant they tap CORRECT and reconciles to the host afterwards, so latency or a brief blip doesn't stall the turn. It stays purely cosmetic: the host remains the sole authority for scoring and round progression, and the buffer is naturally empty at a round boundary so the host always drives the transition.
+
 ### Staying connected
 
 Real phones drop the WebRTC link constantly — backgrounding, screen locks, signal blips. The app is built to ride through it:

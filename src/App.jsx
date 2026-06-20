@@ -458,7 +458,7 @@ function ClientApp({ onExit, initialRoom }) {
 
   if (view && view.phase !== "lobby") return (<>
     <ReconnectBanner show={reconnecting} online={online} />
-    <GameView view={view} onIntent={(action) => send({ t: "intent", action })} />
+    <GameView view={view} onIntent={(action) => send({ t: "intent", action })} optimistic />
   </>);
 
   return (
@@ -504,16 +504,50 @@ function ReconnectBanner({ show, online }) {
 }
 
 /* ===================== shared in-game view ======================= */
-function GameView({ view, onIntent }) {
+// `optimistic` is true on a remote (client) device: the host's word arrives
+// over the wire, so when the giver taps CORRECT we flip to the next buffered
+// word immediately and reconcile when the host's authoritative view lands.
+// The host itself dispatches synchronously, so it shows the real word as-is.
+function GameView({ view, onIntent, optimistic = false }) {
   const accent = view.phase === "endgame" ? "#FF6A3D" : view.round?.accent || "#FF6A3D";
   return (
     <div style={{ "--accent": accent }}>
       {view.phase === "ready" && <Ready v={view} onIntent={onIntent} />}
-      {view.phase === "play" && <Play v={view} onIntent={onIntent} />}
+      {view.phase === "play" && <Play v={view} onIntent={onIntent} optimistic={optimistic} />}
       {view.phase === "transition" && <Transition v={view} onIntent={onIntent} />}
       {view.phase === "endgame" && <Endgame v={view} />}
     </div>
   );
+}
+
+// Optimistic word buffer for the active clue-giver. The host streams the
+// current word plus a short `nextWords` lookahead (giver-only). We display a
+// word `pending` steps ahead of the host's current card; each authoritative
+// advance consumes one pending step. Purely cosmetic — the host stays the sole
+// authority for scoring and round progression, so the worst case is a brief
+// snap-back, never a wrong score or a leaked word.
+function useGiverWord(view, optimistic) {
+  const [pending, setPending] = useState(0);
+  const lastWord = useRef(view.word);
+  const lastTurn = useRef(view.turnNumber);
+  useEffect(() => {
+    if (!optimistic) return;
+    if (view.phase !== "play" || view.turnNumber !== lastTurn.current) {
+      lastTurn.current = view.turnNumber; lastWord.current = view.word; setPending(0); return;
+    }
+    if (view.word && view.word !== lastWord.current) { // host advanced a card
+      lastWord.current = view.word; setPending((p) => Math.max(0, p - 1));
+    }
+  }, [optimistic, view.word, view.phase, view.turnNumber]);
+
+  if (!optimistic) return { shown: view.word, canBuffer: false, bump: () => {} };
+  const list = [view.word, ...(view.nextWords || [])].filter(Boolean);
+  const idx = Math.min(pending, Math.max(0, list.length - 1));
+  return {
+    shown: list.length ? list[idx] : view.word,
+    canBuffer: pending < list.length - 1, // a buffered word is ready to show
+    bump: () => setPending((p) => p + 1),
+  };
 }
 const RoundDots = ({ n }) => (
   <span className="fb-dots" aria-hidden="true">{[1, 2, 3, 4, 5].map((i) => <span key={i} className={`fb-pip ${i <= n ? "on" : ""}`} />)}</span>
@@ -633,8 +667,10 @@ function WordSlip({ word }) {
     </div>
   );
 }
-function Play({ v, onIntent }) {
+function Play({ v, onIntent, optimistic }) {
   const r = v.round;
+  const { shown, canBuffer, bump } = useGiverWord(v, optimistic);
+  const onCorrect = () => { onIntent("CORRECT"); if (optimistic && canBuffer) bump(); };
   return (
     <div className="fb-card fb-stack">
       <div className="fb-hud">
@@ -643,9 +679,9 @@ function Play({ v, onIntent }) {
       </div>
       <VisualTimer timeLeft={v.timeLeft} total={TURN_SECONDS} />
       {v.isActive ? (<>
-        <WordSlip word={v.word} />
+        <WordSlip word={shown} />
         <Rules r={r} tight />
-        <button className="fb-btn fb-correct" onClick={() => onIntent("CORRECT")}>CORRECT <span>(Spacebar)</span></button>
+        <button className="fb-btn fb-correct" onClick={onCorrect}>CORRECT <span>(Spacebar)</span></button>
         <p className="fb-noskip">No skipping. Resolve it or run out the clock.</p>
       </>) : (
         <div className="fb-watch">

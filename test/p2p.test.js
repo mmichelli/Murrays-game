@@ -260,8 +260,10 @@ describe("P2P host hub — in-game word privacy over the wire", () => {
     expect(giver.view.phase).toBe("play");
     expect(giver.view.word).toBeTruthy();      // the giver sees the slip
     expect(giver.view.canCorrect).toBe(true);
+    expect(giver.view.nextWords.length).toBeGreaterThan(0); // and a lookahead buffer
     expect(watcher.view.word).toBeNull();       // the word never reaches anyone else
     expect(watcher.view.canCorrect).toBe(false);
+    expect(watcher.view.nextWords).toEqual([]); // nor does the buffer
 
     // a CORRECT intent from the giver scores; from the watcher it is ignored
     const before = hub.getState().scores[upTeamId][0];
