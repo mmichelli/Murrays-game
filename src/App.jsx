@@ -111,12 +111,30 @@ export default function App() {
     </div>
   );
 }
+const ROUND_GLOSS = {
+  1: "say anything but the word",
+  2: "act it out — no talking",
+  3: "just one word, out loud",
+  4: "clues with your hands only",
+  5: "clues with your face only",
+};
 function Landing({ onPick }) {
   return (
     <div className="fb-card fb-stack fb-center">
       <div className="fb-sliprow" aria-hidden="true"><span>praat</span><span>mime</span><span>loer</span></div>
-      <h1 className="fb-h1 fb-xl">Same words.<br />Five rounds.</h1>
-      <p className="fb-muted">The legendary game you might know as <b>Fishbowl</b>, <b>Celebrity</b>, <b>Salad Bowl</b>, <b>Monikers</b> or <b>the Hat Game</b>. Everyone scribbles words into one bowl, then teams race to make each other guess them — same words, five rounds, each one harder than the last.</p>
+      <p className="fb-muted">The legendary game you might know as <b>Fishbowl</b>, <b>Celebrity</b>, <b>Salad Bowl</b>, <b>Monikers</b> or <b>the Hat Game</b>. Everyone scribbles words into one bowl, then teams race to make each other guess them.</p>
+      <div className="fb-roundlist">
+        <div className="fb-roundlisttop">Same words, all five rounds — each one harder:</div>
+        <ol className="fb-rounds">
+          {ROUNDS.map((r) => (
+            <li key={r.n} style={{ "--tc": r.accent }}>
+              <span className="fb-rnum">{r.n}</span>
+              <span className="fb-rname">{r.icon} {r.name}</span>
+              <span className="fb-rgloss">{ROUND_GLOSS[r.n]}</span>
+            </li>
+          ))}
+        </ol>
+      </div>
       <button className="fb-btn" onClick={() => onPick("host")}>Open a room</button>
       <button className="fb-btn fb-ghost" onClick={() => onPick("client")}>Join a room</button>
       <p className="fb-tiny">Named after Murray — the varsity mate who first taught us to play.</p>
@@ -961,7 +979,7 @@ const CSS = `
   background-image:url("data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20width='180'%20height='180'%3E%3Cfilter%20id='n'%3E%3CfeTurbulence%20type='fractalNoise'%20baseFrequency='0.82'%20numOctaves='2'%20stitchTiles='stitch'/%3E%3CfeColorMatrix%20type='saturate'%20values='0'/%3E%3C/filter%3E%3Crect%20width='180'%20height='180'%20filter='url(%23n)'/%3E%3C/svg%3E");
   background-size:180px 180px;}
 .fb-shell{width:100%;max-width:540px;position:relative;z-index:1;}
-.fb-brand{font-family:Anton,'Arial Narrow',sans-serif;letter-spacing:.06em;font-size:22px;text-align:center;width:max-content;max-width:100%;margin:2px auto 18px;color:var(--ink);text-transform:uppercase;}
+.fb-brand{font-family:Anton,'Arial Narrow',sans-serif;letter-spacing:.03em;font-size:clamp(32px,9.5vw,46px);line-height:.9;text-align:center;width:max-content;max-width:100%;margin:6px auto 20px;color:var(--ink);text-transform:uppercase;text-shadow:3px 3px 0 var(--accent);}
 
 /* clean off-white paper cards on the warm desk. */
 .fb-card{position:relative;border:1px solid var(--line);border-radius:12px;padding:22px;
@@ -1019,6 +1037,15 @@ const CSS = `
 .fb-sliprow span:nth-child(1){transform:rotate(-5deg);color:#C2683F;}
 .fb-sliprow span:nth-child(2){transform:rotate(3deg);color:#3B6EA5;}
 .fb-sliprow span:nth-child(3){transform:rotate(-2deg);color:#6B5B9A;}
+
+/* landing round-by-round breakdown */
+.fb-roundlist{width:100%;display:flex;flex-direction:column;gap:10px;}
+.fb-roundlisttop{font-family:'Space Mono',monospace;font-weight:700;font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);text-align:left;}
+.fb-rounds{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:9px;width:100%;}
+.fb-rounds li{display:flex;align-items:baseline;gap:9px;text-align:left;}
+.fb-rnum{font-family:Anton,sans-serif;font-size:17px;color:var(--tc);min-width:15px;flex:none;}
+.fb-rname{font-family:Archivo,sans-serif;font-weight:800;font-size:14.5px;color:var(--ink);white-space:nowrap;flex:none;}
+.fb-rgloss{color:var(--muted);font-size:13px;line-height:1.3;}
 
 .fb-steps{display:flex;gap:8px;}
 .fb-step{flex:1;display:flex;align-items:center;justify-content:center;gap:7px;background:var(--panel);border:1.5px solid var(--line);border-radius:8px;padding:11px 6px;font-family:'Space Mono',monospace;font-weight:700;font-size:12px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);cursor:pointer;}
