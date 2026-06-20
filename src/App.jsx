@@ -626,7 +626,7 @@ function Ready({ v, onIntent }) {
   const mineUp = !!v.myTeamId && v.myTeamId === v.teamUpId;
   return (
     <div className="fb-card fb-stack fb-center" style={{ "--tc": v.teamUpColor }}>
-      {v.turnNumber > 1 && <div className="fb-flash">⏰ Time! {v.teamUpName} is up next.</div>}
+      {v.turnNumber > 1 && <div className="fb-flash">⏰ Time's up!</div>}
       <RoundLine r={r} />
       <div className="fb-uplabel">{mineUp ? "Your team's turn" : "Now up to give clues"}</div>
       <FitText className="fb-h1 fb-xl" style={{ color: v.teamUpColor }} text={v.teamUpName} min={20} />
@@ -636,11 +636,11 @@ function Ready({ v, onIntent }) {
         <Rules r={r} />
         <button className="fb-btn fb-big" onClick={() => onIntent("CLAIM_AND_BEGIN")}>I'll give clues · {TURN_SECONDS}s</button>
       </>) : mineUp ? (
-        <p className="fb-muted">Your team's up — someone tap “I'll give clues” on their phone.</p>
+        <p className="fb-muted">Someone tap “I'll give clues” on their phone.</p>
       ) : myTeam ? (
-        <p className="fb-muted">It's <b style={{ color: v.teamUpColor }}>{v.teamUpName}</b>'s turn to give clues. Sit tight — your turn comes around.</p>
+        <p className="fb-muted">Sit tight — your turn comes around.</p>
       ) : (
-        <p className="fb-muted">Waiting for {v.teamUpName} to start their turn. Watch the room.</p>
+        <p className="fb-muted">Watch the room.</p>
       )}
       <YouBadge team={myTeam} />
       <Standings v={v} />
@@ -742,7 +742,7 @@ function Play({ v, onIntent, optimistic }) {
     <div className="fb-card fb-stack">
       <div className="fb-hud">
         <RoundLine r={r} />
-        <span className="fb-turn" style={{ color: v.teamUpColor }}>● {v.teamUpName} up · {v.activeName}</span>
+        <span className="fb-turn" style={{ color: v.teamUpColor }}>● {v.activeName}</span>
       </div>
       <VisualTimer timeLeft={v.timeLeft} total={TURN_SECONDS} />
       {v.isActive ? (<>
