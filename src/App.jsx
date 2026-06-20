@@ -1,8 +1,52 @@
-import React, { useReducer, useEffect, useLayoutEffect, useState, useRef, useMemo, useCallback } from "react";
+import React, { createContext, useContext, useEffect, useLayoutEffect, useState, useRef, useMemo, useCallback } from "react";
 import {
   ROUNDS, PALETTE, MIN_WORDS, MAX_TEAMS, TURN_SECONDS, WORDS_PER_PLAYER, sampleDeck, deckTopUp,
   uid, initial, viewFor, createHostHub, peerOptions,
 } from "./engine.js";
+import { LANGS, detectLang, saveLang, makeT, roundText } from "./i18n.js";
+
+/* ---------------------------- language ---------------------------- *
+ * One context carries the chosen language + a translator down to every
+ * component. The choice follows the browser on first load and is then
+ * remembered (localStorage), so a returning player keeps their flag.
+ * Language is a per-device display preference - it never touches the
+ * shared game state, so two phones in one room can read it each in their
+ * own tongue.
+ * ------------------------------------------------------------------ */
+const LangCtx = createContext(null);
+function LangProvider({ children }) {
+  const [lang, setLangState] = useState(detectLang);
+  const setLang = useCallback((code) => { saveLang(code); setLangState(code); }, []);
+  const t = useMemo(() => makeT(lang), [lang]);
+  useEffect(() => { try { document.documentElement.lang = lang; } catch {} }, [lang]);
+  const value = useMemo(() => ({ lang, setLang, t }), [lang, setLang, t]);
+  return <LangCtx.Provider value={value}>{children}</LangCtx.Provider>;
+}
+const useLang = () => useContext(LangCtx);
+const useT = () => useContext(LangCtx).t;
+// Render a translated value that may be a plain string or an array of
+// segments (a `{ b }` segment becomes <b>), used for the few strings that
+// need inline bold (e.g. "Joining room CODE.").
+function Tr({ value, boldClass }) {
+  if (Array.isArray(value)) return <>{value.map((seg, i) => seg && typeof seg === "object" ? <b key={i} className={boldClass}>{seg.b}</b> : <React.Fragment key={i}>{seg}</React.Fragment>)}</>;
+  return <>{value}</>;
+}
+// The flag picker. A pill of flags; the live one is highlighted. Tapping a
+// flag switches language everywhere instantly and remembers the choice.
+function LangSwitcher() {
+  const { lang, setLang, t } = useLang();
+  return (
+    <div className="fb-langs" role="group" aria-label={t("lang.label")}>
+      {LANGS.map((l) => (
+        <button key={l.code} type="button" className={`fb-lang ${l.code === lang ? "on" : ""}`}
+          aria-pressed={l.code === lang} title={l.label} onClick={() => setLang(l.code)}>
+          <span className="fb-flag" aria-hidden="true">{l.flag}</span>
+          <span className="fb-langlabel">{l.label}</span>
+        </button>
+      ))}
+    </div>
+  );
+}
 
 /* ================================================================== *
  * MURRAY'S GAME - a 5-round Fishbowl for South African students.
@@ -90,6 +134,14 @@ function peerChannel(conn) {
 
 /* ============================== APP ============================== */
 export default function App() {
+  return (
+    <LangProvider>
+      <AppInner />
+    </LangProvider>
+  );
+}
+function AppInner() {
+  const t = useT();
   const initialRoom = useRef(readRoomParam()).current;
   // Restore the role across a reload (per-tab), so a refresh resumes hosting /
   // playing instead of dropping back to the landing page.
@@ -102,8 +154,11 @@ export default function App() {
     <div className="fb-root" style={{ "--accent": "#C2683F" }}>
       <style>{CSS}</style>
       <div className="fb-shell">
-        <div className="fb-brand">MURRAY'S GAME</div>
-        {role && <div className="fb-topbackwrap"><button className="fb-topback" onClick={() => setRole(null)}>← Leave to start</button></div>}
+        <div className="fb-topbar">
+          <div className="fb-brand">MURRAY'S GAME</div>
+          <LangSwitcher />
+        </div>
+        {role && <div className="fb-topbackwrap"><button className="fb-topback" onClick={() => setRole(null)}>{t("common.leave")}</button></div>}
         {!role && <Landing onPick={setRole} />}
         {role === "host" && <HostApp onExit={() => setRole(null)} />}
         {role === "client" && <ClientApp onExit={() => setRole(null)} initialRoom={initialRoom} />}
@@ -111,39 +166,34 @@ export default function App() {
     </div>
   );
 }
-const ROUND_GLOSS = {
-  1: "say anything but the word",
-  2: "act it out, no talking",
-  3: "just one word, out loud",
-  4: "clues with your hands only",
-  5: "clues with your face only",
-};
 function Landing({ onPick }) {
+  const t = useT();
   return (
     <div className="fb-card fb-stack fb-center">
       <div className="fb-sliprow" aria-hidden="true"><span>praat</span><span>mime</span><span>loer</span></div>
-      <p className="fb-muted">The legendary game you might know as <b>Fishbowl</b>, <b>Celebrity</b>, <b>Salad Bowl</b>, <b>Monikers</b> or <b>the Hat Game</b>. Everyone scribbles words into one bowl, then teams race to make each other guess them.</p>
+      <p className="fb-muted">{t("landing.lead")} <b>Fishbowl</b>, <b>Celebrity</b>, <b>Salad Bowl</b>, <b>Monikers</b> {t("landing.or")} <b>{t("landing.hatGame")}</b>. {t("landing.tail")}</p>
       <div className="fb-roundlist">
-        <div className="fb-roundlisttop">Same words, all five rounds, each one harder:</div>
+        <div className="fb-roundlisttop">{t("landing.harder")}</div>
         <ol className="fb-rounds">
           {ROUNDS.map((r) => (
             <li key={r.n} style={{ "--tc": r.accent }}>
               <span className="fb-rnum">{r.n}</span>
-              <span className="fb-rname">{r.icon} {r.name}</span>
-              <span className="fb-rgloss">{ROUND_GLOSS[r.n]}</span>
+              <span className="fb-rname">{r.icon} {t(`round.${r.n}.name`)}</span>
+              <span className="fb-rgloss">{t(`round.${r.n}.gloss`)}</span>
             </li>
           ))}
         </ol>
       </div>
-      <button className="fb-btn" onClick={() => onPick("host")}>Open a room</button>
-      <button className="fb-btn fb-ghost" onClick={() => onPick("client")}>Join a room</button>
-      <p className="fb-tiny">Named after Murray, the varsity mate who first taught us to play.</p>
+      <button className="fb-btn" onClick={() => onPick("host")}>{t("landing.openRoom")}</button>
+      <button className="fb-btn fb-ghost" onClick={() => onPick("client")}>{t("landing.joinRoom")}</button>
+      <p className="fb-tiny">{t("landing.named")}</p>
     </div>
   );
 }
 
 /* ============================== HOST ============================== */
 function HostApp({ onExit }) {
+  const t = useT();
   // Rehydrate the room across a reload: same code (so phones reconnect to the
   // same broker id), same host identity, same in-progress game.
   const saved = useRef(ssGet(PK.host)).current;
@@ -270,9 +320,9 @@ function HostApp({ onExit }) {
       ? <HostLobby state={state} dispatch={dispatch} hostId={hostId} roomCode={roomCode} peerStatus={peerStatus} onExit={onExit} />
       : (
         <div className="fb-card fb-stack">
-          <h1 className="fb-h1">You're hosting</h1>
-          <label className="fb-label">Your name<input className="fb-input" value={name} onChange={(e) => setName(e.target.value)} maxLength={20} /></label>
-          <button className="fb-btn" disabled={!name.trim()} onClick={openRoom}>Create the room</button>
+          <h1 className="fb-h1">{t("host.hosting")}</h1>
+          <label className="fb-label">{t("common.yourName")}<input className="fb-input" value={name} onChange={(e) => setName(e.target.value)} maxLength={20} /></label>
+          <button className="fb-btn" disabled={!name.trim()} onClick={openRoom}>{t("host.createRoom")}</button>
         </div>
       );
   }
@@ -280,21 +330,22 @@ function HostApp({ onExit }) {
     <GameView view={view} onIntent={(action) => dispatch({ type: action, fromId: hostId })} />
     {state.phase !== "endgame" && (
       <div className="fb-hostbar">
-        <span>Host</span>
-        <button onClick={() => dispatch({ type: "FORCE_NEXT" })}>Force next turn</button>
-        <button onClick={() => dispatch({ type: "END_GAME" })}>End game</button>
+        <span>{t("host.host")}</span>
+        <button onClick={() => dispatch({ type: "FORCE_NEXT" })}>{t("host.forceNext")}</button>
+        <button onClick={() => dispatch({ type: "END_GAME" })}>{t("host.endGame")}</button>
       </div>
     )}
     {state.phase === "endgame" && (
       <div className="fb-hostbar">
-        <span>Host</span>
-        <button onClick={() => dispatch({ type: "PLAY_AGAIN" })}>Play again, same bowl</button>
+        <span>{t("host.host")}</span>
+        <button onClick={() => dispatch({ type: "PLAY_AGAIN" })}>{t("host.playAgain")}</button>
       </div>
     )}
   </>);
 }
 
 function HostLobby({ state, dispatch, hostId, roomCode, peerStatus, onExit }) {
+  const t = useT();
   const [tab, setTab] = useState(0);
   const color = (i) => PALETTE[i % PALETTE.length];
   // Gate on connected players only, so a phone that's briefly offline (kept in
@@ -307,9 +358,9 @@ function HostLobby({ state, dispatch, hostId, roomCode, peerStatus, onExit }) {
   const connected = clients >= 1;
   const canStart = teamsReady && placed && bowlReady && connected;
   const steps = [
-    { label: "Invite", done: connected },
-    { label: "Groups", done: teamsReady && placed },
-    { label: "Bowl", done: bowlReady },
+    { label: t("steps.invite"), done: connected },
+    { label: t("steps.groups"), done: teamsReady && placed },
+    { label: t("steps.bowl"), done: bowlReady },
   ];
 
   const teams = state.teams.map((t, i) => ({
@@ -333,12 +384,12 @@ function HostLobby({ state, dispatch, hostId, roomCode, peerStatus, onExit }) {
 
       {tab === 0 && (<>
         <RoomShare code={roomCode} status={peerStatus} connected={clients} />
-        <button className="fb-btn fb-ghost" onClick={() => setTab(1)}>Next · groups →</button>
+        <button className="fb-btn fb-ghost" onClick={() => setTab(1)}>{t("lobby.nextGroups")}</button>
       </>)}
 
       {tab === 1 && (
         <div className="fb-card fb-stack">
-          <h2 className="fb-h2">Groups · {teams.length} · tap to join</h2>
+          <h2 className="fb-h2">{t("lobby.groupsTap", { n: teams.length })}</h2>
           <GroupBoard
             teams={teams} roster={roster} myId={hostId}
             myTeamId={state.players.find((p) => p.id === hostId)?.teamId}
@@ -348,14 +399,14 @@ function HostLobby({ state, dispatch, hostId, roomCode, peerStatus, onExit }) {
             canAddTeam={teams.length < MAX_TEAMS}
             onRemoveTeam={(id) => dispatch({ type: "REMOVE_TEAM", id })}
           />
-          <button className="fb-btn fb-ghost" onClick={() => setTab(2)}>Next · the bowl →</button>
+          <button className="fb-btn fb-ghost" onClick={() => setTab(2)}>{t("lobby.nextBowl")}</button>
         </div>
       )}
 
       {tab === 2 && (
         <div className="fb-card fb-stack">
-          <h2 className="fb-h2">The bowl</h2>
-          <p className="fb-muted"><b className="fb-num">{state.bowl.length}</b> in the bowl. Everyone adds at once. Aim for {WORDS_PER_PLAYER} each.</p>
+          <h2 className="fb-h2">{t("lobby.theBowl")}</h2>
+          <p className="fb-muted"><b className="fb-num">{state.bowl.length}</b> {t("lobby.bowlInfo", { x: WORDS_PER_PLAYER })}</p>
           <WordAdder onAdd={(ws) => dispatch({ type: "ADD_WORDS", words: ws, by: hostId })}
             count={state.wordCounts[hostId] || 0} target={WORDS_PER_PLAYER} />
           <DeckFill bowl={state.bowl} players={state.players.length}
@@ -364,11 +415,11 @@ function HostLobby({ state, dispatch, hostId, roomCode, peerStatus, onExit }) {
       )}
 
       <button className="fb-btn fb-big" disabled={!canStart} onClick={() => dispatch({ type: "START_GAME" })}>
-        {canStart ? "Start game"
-          : !connected ? "Waiting for players to join"
-          : !bowlReady ? `Add ${MIN_WORDS - state.bowl.length} more words`
-          : !placed ? "Everyone needs a group"
-          : "Need 2 groups with players"}
+        {canStart ? t("lobby.start")
+          : !connected ? t("lobby.waitPlayers")
+          : !bowlReady ? t("lobby.addMore", { n: MIN_WORDS - state.bowl.length })
+          : !placed ? t("lobby.needGroup")
+          : t("lobby.needTwo")}
       </button>
     </div>
   );
@@ -382,6 +433,7 @@ function HostLobby({ state, dispatch, hostId, roomCode, peerStatus, onExit }) {
  * banner - no button to press - instead of a dead "reload to rejoin".
  * ------------------------------------------------------------------ */
 function ClientApp({ onExit, initialRoom }) {
+  const t = useT();
   // Restore what we need to silently re-dial after a reload.
   const saved = useRef(ssGet(PK.client)).current;
   const resuming = !!(saved?.name && saved?.code);
@@ -415,7 +467,7 @@ function ClientApp({ onExit, initialRoom }) {
   // stale closures even though they're recreated each render.
   function dialHost() {
     if (!aliveRef.current || !peerRef.current) return;
-    setStatus("Reaching the room…");
+    setStatus(t("client.reaching"));
     let conn;
     try { conn = peerRef.current.connect(peerIdFor(codeRef.current), { reliable: true }); }
     catch { return scheduleRetry(); }
@@ -443,7 +495,7 @@ function ClientApp({ onExit, initialRoom }) {
     peer.on("open", () => dialHost());
     peer.on("disconnected", () => { if (aliveRef.current) { try { peer.reconnect(); } catch {} } });
     peer.on("error", (err) => {
-      if (err?.type === "peer-unavailable") setStatus("Room not answering yet, retrying…");
+      if (err?.type === "peer-unavailable") setStatus(t("client.roomNotAnswering"));
       if (aliveRef.current) scheduleRetry();
     });
   }
@@ -485,7 +537,7 @@ function ClientApp({ onExit, initialRoom }) {
     cidRef.current = stableClientId(c);
     ssSet(PK.client, { name: n, code: c }); // remember so a reload re-dials itself
     aliveRef.current = true; retryRef.current = 0;
-    setStep("connecting"); setStatus("Reaching the room…");
+    setStep("connecting"); setStatus(t("client.reaching"));
     spinUp();
   }
   const join = () => {
@@ -536,18 +588,18 @@ function ClientApp({ onExit, initialRoom }) {
   return (
     <div className="fb-card fb-stack">
       <ReconnectBanner show={reconnecting && step === "lobby"} online={online} />
-      <h1 className="fb-h1">Join a room</h1>
+      <h1 className="fb-h1">{t("client.joinRoom")}</h1>
       {step === "form" && (<>
-        {initialRoom && <p className="fb-muted">Joining room <b className="fb-code">{initialRoom}</b>. Just pop your name in.</p>}
-        <label className="fb-label">Your name<input className="fb-input" value={name} onChange={(e) => setName(e.target.value)} maxLength={20} autoFocus /></label>
-        {!initialRoom && <label className="fb-label">Room code<input className="fb-input" value={code} onChange={(e) => setCode(e.target.value)} maxLength={12} placeholder="e.g. kx7m2p" /></label>}
-        <button className="fb-btn" disabled={!name.trim() || !code.trim()} onClick={join}>Join room</button>
+        {initialRoom && <p className="fb-muted"><Tr value={t("client.joiningRoom", { code: initialRoom })} boldClass="fb-code" /></p>}
+        <label className="fb-label">{t("common.yourName")}<input className="fb-input" value={name} onChange={(e) => setName(e.target.value)} maxLength={20} autoFocus /></label>
+        {!initialRoom && <label className="fb-label">{t("client.roomCode")}<input className="fb-input" value={code} onChange={(e) => setCode(e.target.value)} maxLength={12} placeholder="e.g. kx7m2p" /></label>}
+        <button className="fb-btn" disabled={!name.trim() || !code.trim()} onClick={join}>{t("client.join")}</button>
         {status && <p className="fb-err">{status}</p>}
       </>)}
-      {step === "connecting" && <p className="fb-muted">{status || "Connecting…"}</p>}
+      {step === "connecting" && <p className="fb-muted">{status || t("client.connecting")}</p>}
       {step === "lobby" && lobby && (<>
-        <div className="fb-roundtag">In the room</div>
-        <h2 className="fb-h2">Groups · {lobby.teams.length} · tap to join</h2>
+        <div className="fb-roundtag">{t("client.inRoom")}</div>
+        <h2 className="fb-h2">{t("lobby.groupsTap", { n: lobby.teams.length })}</h2>
         <GroupBoard
           teams={lobby.teams} roster={lobby.roster} myId={myId} myTeamId={myTeam}
           onPick={(teamId) => send({ t: "setTeam", teamId })}
@@ -555,21 +607,20 @@ function ClientApp({ onExit, initialRoom }) {
           onAddTeam={() => send({ t: "addTeam" })}
           canAddTeam={lobby.teams.length < lobby.maxTeams}
         />
-        <h2 className="fb-h2">The bowl</h2>
-        <p className="fb-muted"><b className="fb-num">{lobby.bowlCount}</b> in the bowl. Everyone's adding at once.</p>
+        <h2 className="fb-h2">{t("lobby.theBowl")}</h2>
+        <p className="fb-muted"><b className="fb-num">{lobby.bowlCount}</b> {t("client.bowlInfo")}</p>
         <WordAdder onAdd={(ws) => send({ t: "words", words: ws })} count={myWords} target={target} />
-        <p className="fb-tiny">{myTeam ? "Waiting for the host to start…" : "Join a group to be ready."}</p>
+        <p className="fb-tiny">{myTeam ? t("client.waitHost") : t("client.joinGroupReady")}</p>
       </>)}
     </div>
   );
 }
 function ReconnectBanner({ show, online }) {
+  const t = useT();
   if (!show) return null;
   return (
     <div className={`fb-reconnect ${online ? "" : "offline"}`}>
-      {online
-        ? "⟳ Connection dropped, getting you back in…"
-        : "📡 You're offline. You'll rejoin automatically the moment you're back."}
+      {online ? t("reconnect.online") : t("reconnect.offline")}
     </div>
   );
 }
@@ -623,42 +674,50 @@ function useGiverWord(view, optimistic) {
 const RoundDots = ({ n }) => (
   <span className="fb-dots" aria-hidden="true">{[1, 2, 3, 4, 5].map((i) => <span key={i} className={`fb-pip ${i <= n ? "on" : ""}`} />)}</span>
 );
-const RoundLine = ({ r }) => (
-  <div className="fb-roundline"><span className="fb-roundtag">{r.icon} {r.name}</span><RoundDots n={r.n} /></div>
-);
-const Rules = ({ r, tight }) => (
-  <div className={`fb-rules ${tight ? "tight" : ""}`}>
-    <span><b>Allowed</b> {r.allowed}</span><span><b>Never</b> {r.restrict}</span>
-  </div>
-);
+const RoundLine = ({ r }) => {
+  const t = useT();
+  return <div className="fb-roundline"><span className="fb-roundtag">{r.icon} {t(`round.${r.n}.name`)}</span><RoundDots n={r.n} /></div>;
+};
+const Rules = ({ r, tight }) => {
+  const t = useT();
+  return (
+    <div className={`fb-rules ${tight ? "tight" : ""}`}>
+      <span><b>{t("rules.allowed")}</b> {t(`round.${r.n}.allowed`)}</span><span><b>{t("rules.never")}</b> {t(`round.${r.n}.restrict`)}</span>
+    </div>
+  );
+};
 // A persistent "this is your team" marker so a player always knows which
 // side they're on, separate from whichever team is currently up.
-const YouBadge = ({ team }) => team ? (
-  <div className="fb-youbadge" style={{ "--tc": team.color }}>
-    <span className="fb-dot" /> You're on <b>{team.name}</b>
-  </div>
-) : null;
+const YouBadge = ({ team }) => {
+  const t = useT();
+  return team ? (
+    <div className="fb-youbadge" style={{ "--tc": team.color }}>
+      <span className="fb-dot" /> {t("youbadge.lead")} <b>{team.name}</b>
+    </div>
+  ) : null;
+};
 function Ready({ v, onIntent }) {
+  const tr = useT();
   const r = v.round;
   const myTeam = v.teams.find((t) => t.id === v.myTeamId);
   const mineUp = !!v.myTeamId && v.myTeamId === v.teamUpId;
   return (
     <div className="fb-card fb-stack fb-center" style={{ "--tc": v.teamUpColor }}>
-      {v.turnNumber > 1 && <div className="fb-flash">⏰ Time's up!</div>}
+      {v.turnNumber > 1 && <div className="fb-flash">{tr("ready.timesUp")}</div>}
       <RoundLine r={r} />
-      <div className="fb-uplabel">{mineUp ? "Your team's turn" : "Now up to give clues"}</div>
+      <div className="fb-uplabel">{mineUp ? tr("ready.yourTurn") : tr("ready.nowUp")}</div>
       <FitText className="fb-h1 fb-xl" style={{ color: v.teamUpColor }} text={v.teamUpName} min={20} />
       {v.canClaim ? (<>
-        <p className="fb-muted">{r.setup}</p>
-        {v.inherited && <p className="fb-inherit">You'd inherit one un-guessed card.</p>}
+        <p className="fb-muted">{tr(`round.${r.n}.setup`)}</p>
+        {v.inherited && <p className="fb-inherit">{tr("ready.inherit")}</p>}
         <Rules r={r} />
-        <button className="fb-btn fb-big" onClick={() => onIntent("CLAIM_AND_BEGIN")}>I'll give clues · {TURN_SECONDS}s</button>
+        <button className="fb-btn fb-big" onClick={() => onIntent("CLAIM_AND_BEGIN")}>{tr("ready.illGive", { n: TURN_SECONDS })}</button>
       </>) : mineUp ? (
-        <p className="fb-muted">Someone tap “I'll give clues” on their phone.</p>
+        <p className="fb-muted">{tr("ready.someone")}</p>
       ) : myTeam ? (
-        <p className="fb-muted">Sit tight, your turn comes around.</p>
+        <p className="fb-muted">{tr("ready.sitTight")}</p>
       ) : (
-        <p className="fb-muted">Watch the room.</p>
+        <p className="fb-muted">{tr("ready.watch")}</p>
       )}
       <YouBadge team={myTeam} />
       <Standings v={v} />
@@ -669,6 +728,7 @@ function Ready({ v, onIntent }) {
 // clock face, seconds called out big in the middle. Zones shift green →
 // amber → red as the clock winds down; the last 10s give it a heartbeat.
 function VisualTimer({ timeLeft, total }) {
+  const t = useT();
   const frac = Math.max(0, Math.min(1, timeLeft / total));
   const zone = timeLeft <= 10 ? "red" : timeLeft <= 20 ? "yellow" : "green";
   const low = timeLeft <= 10 && timeLeft > 0;
@@ -676,13 +736,13 @@ function VisualTimer({ timeLeft, total }) {
     <div
       className={`fb-vtimer ${zone} ${low ? "pulse" : ""}`}
       role="timer"
-      aria-label={`${timeLeft} seconds left`}
+      aria-label={t("timer.secsLeft", { n: timeLeft })}
     >
       <div className="fb-vt-disc" style={{ "--fbdeg": `${frac * 360}deg` }}>
         <div className="fb-vt-ticks" aria-hidden="true" />
         <div className="fb-vt-hub">
           <span className="fb-vt-secs">{timeLeft}</span>
-          <span className="fb-vt-unit">sec</span>
+          <span className="fb-vt-unit">{t("timer.sec")}</span>
         </div>
       </div>
     </div>
@@ -752,6 +812,7 @@ function WordSlip({ word }) {
   );
 }
 function Play({ v, onIntent, optimistic }) {
+  const tr = useT();
   const r = v.round;
   const myTeam = v.teams.find((t) => t.id === v.myTeamId);
   const { shown, canBuffer, bump } = useGiverWord(v, optimistic);
@@ -763,12 +824,12 @@ function Play({ v, onIntent, optimistic }) {
       {v.isActive ? (<>
         <WordSlip word={shown} />
         <Rules r={r} tight />
-        <button className="fb-btn fb-correct" onClick={onCorrect}>CORRECT <span>(Spacebar)</span></button>
-        <p className="fb-noskip">No skipping. Resolve it or run out the clock.</p>
+        <button className="fb-btn fb-correct" onClick={onCorrect}>{tr("play.correct")} <span>{tr("play.spacebar")}</span></button>
+        <p className="fb-noskip">{tr("play.noSkip")}</p>
       </>) : (
         <div className="fb-watch">
-          <p>{v.activeName} is giving clues for <b style={{ color: v.teamUpColor }}>{v.teamUpName}</b>.</p>
-          <p className="fb-tiny">Guess out loud. The word stays on their phone.</p>
+          <p>{v.activeName} {tr("play.givingFor")} <b style={{ color: v.teamUpColor }}>{v.teamUpName}</b>.</p>
+          <p className="fb-tiny">{tr("play.guessOut")}</p>
         </div>
       )}
       <YouBadge team={myTeam} />
@@ -777,37 +838,39 @@ function Play({ v, onIntent, optimistic }) {
   );
 }
 function Transition({ v, onIntent }) {
+  const tr = useT();
   const r = v.round;
   return (
     <div className="fb-modal" style={{ "--accent": r.accent }}>
       <div className="fb-card fb-stack fb-center">
-        <div className="fb-flash big">⏸ Round over mid-turn</div>
-        <p className="fb-paused">Paused · <b>{v.timeLeft}s</b> left</p>
-        <div className="fb-nextsetup">{r.icon} ROUND {r.n} IS <b>{r.name.toUpperCase()}</b><span>{r.setup}</span></div>
+        <div className="fb-flash big">{tr("trans.roundOver")}</div>
+        <p className="fb-paused">{tr("trans.pausedLead")} <b>{v.timeLeft}s</b> {tr("trans.pausedLeft")}</p>
+        <div className="fb-nextsetup">{r.icon} <Tr value={tr("trans.roundIs", { n: r.n, name: tr(`round.${r.n}.name`).toUpperCase() })} /><span>{tr(`round.${r.n}.setup`)}</span></div>
         <RoundDots n={r.n} />
         <Rules r={r} />
-        {v.canResume ? <button className="fb-btn fb-big" onClick={() => onIntent("RESUME")}>Resume turn ▶</button>
-          : <p className="fb-muted">Waiting for {v.activeName} to resume…</p>}
+        {v.canResume ? <button className="fb-btn fb-big" onClick={() => onIntent("RESUME")}>{tr("trans.resume")}</button>
+          : <p className="fb-muted">{tr("trans.waitResume", { name: v.activeName })}</p>}
       </div>
     </div>
   );
 }
 function Endgame({ v }) {
+  const tr = useT();
   const total = (id) => v.scores[id].reduce((a, b) => a + b, 0);
   const ranked = [...v.teams].sort((a, b) => total(b.id) - total(a.id));
   const top = total(ranked[0].id), winners = ranked.filter((t) => total(t.id) === top);
   return (
     <div className="fb-card fb-stack">
-      <FitText className="fb-h1 fb-xl" style={{ color: winners[0].color }} text={winners.length > 1 ? "It's a tie!" : `${winners[0].name} wins!`} min={20} />
+      <FitText className="fb-h1 fb-xl" style={{ color: winners[0].color }} text={winners.length > 1 ? tr("end.tie") : tr("end.wins", { team: winners[0].name })} min={20} />
       {ranked.map((t, i) => (
         <div className="fb-rankrow" key={t.id} style={{ "--tc": t.color }}>
           <span className="fb-rank">{i + 1}</span><span className="fb-dot" />
           <span className="fb-rankname">{t.name}</span><span className="fb-ranktotal">{total(t.id)}</span>
         </div>
       ))}
-      <details className="fb-details"><summary>Round-by-round</summary>
+      <details className="fb-details"><summary>{tr("end.roundByRound")}</summary>
         <div className="fb-scroll"><table className="fb-table">
-          <thead><tr><th>Team</th>{ROUNDS.map((r) => <th key={r.n}><span className="fb-th2">{r.icon}<span>R{r.n}</span></span></th>)}</tr></thead>
+          <thead><tr><th>{tr("end.team")}</th>{ROUNDS.map((r) => <th key={r.n}><span className="fb-th2">{r.icon}<span>{tr("end.r", { n: r.n })}</span></span></th>)}</tr></thead>
           <tbody>{ranked.map((t) => <tr key={t.id}><td style={{ color: t.color }}>{t.name}</td>{v.scores[t.id].map((s, i) => <td key={i}>{s}</td>)}</tr>)}</tbody>
         </table></div>
       </details>
@@ -829,6 +892,7 @@ function Standings({ v }) {
 // Shared by host + clients: every group with a live count, who's in it,
 // an editable name, and a tap-to-join button. Host also gets a remove (×).
 function GroupBoard({ teams, roster, myId, myTeamId, onPick, onRename, onAddTeam, canAddTeam, onRemoveTeam }) {
+  const tr = useT();
   const members = (tid) => roster.filter((p) => p.teamId === tid);
   const unplaced = roster.filter((p) => !p.teamId);
   return (
@@ -840,22 +904,22 @@ function GroupBoard({ teams, roster, myId, myTeamId, onPick, onRename, onAddTeam
             <div className="fb-grouphead">
               <span className="fb-dot" />
               <input className="fb-input bare" value={t.name} maxLength={16}
-                onChange={(e) => onRename(t.id, e.target.value)} aria-label="Group name" />
+                onChange={(e) => onRename(t.id, e.target.value)} aria-label={tr("group.nameLabel")} />
               <span className="fb-tcount">{t.count}</span>
-              {onRemoveTeam && teams.length > 2 && <button className="fb-x" title="Remove group" onClick={() => onRemoveTeam(t.id)}>×</button>}
+              {onRemoveTeam && teams.length > 2 && <button className="fb-x" title={tr("group.remove")} onClick={() => onRemoveTeam(t.id)}>×</button>}
             </div>
             <div className="fb-rosterwrap">
               {members(t.id).length === 0
-                ? <span className="fb-empty">empty</span>
+                ? <span className="fb-empty">{tr("group.empty")}</span>
                 : members(t.id).map((p) => (
                   <span key={p.id} className={`fb-chip ${p.connected === false ? "off" : ""}`} style={{ "--tc": t.color }}>
-                    <span className="fb-dot" /> {p.name}{p.id === myId ? " (you)" : ""}{p.isHost ? " · host" : ""}
-                    {p.connected === false ? " · offline" : ""}
+                    <span className="fb-dot" /> {p.name}{p.id === myId ? tr("group.you") : ""}{p.isHost ? tr("group.host") : ""}
+                    {p.connected === false ? tr("group.offline") : ""}
                   </span>
                 ))}
             </div>
             <button className={`fb-joinbtn ${mine ? "on" : ""}`} onClick={() => onPick(t.id)}>
-              {mine ? "✓ You're in this group" : "Join this group"}
+              {mine ? tr("group.youreIn") : tr("group.joinThis")}
             </button>
           </div>
         );
@@ -864,18 +928,19 @@ function GroupBoard({ teams, roster, myId, myTeamId, onPick, onRename, onAddTeam
         <div className="fb-rosterwrap">
           {unplaced.map((p) => (
             <span key={p.id} className="fb-chip" style={{ "--tc": "#9b927f" }}>
-              <span className="fb-dot" /> {p.name}{p.id === myId ? " (you)" : ""} · no group yet
+              <span className="fb-dot" /> {p.name}{p.id === myId ? tr("group.you") : ""}{tr("group.noGroup")}
             </span>
           ))}
         </div>
       )}
-      {canAddTeam && <button className="fb-btn fb-ghost" onClick={onAddTeam}>+ add a group</button>}
+      {canAddTeam && <button className="fb-btn fb-ghost" onClick={onAddTeam}>{tr("group.addGroup")}</button>}
     </div>
   );
 }
 // Host's share panel: a QR to scan and a link to send. The PeerJS broker
 // handles only the handshake; game data stays peer-to-peer.
 function RoomShare({ code, status, connected }) {
+  const t = useT();
   const link = useMemo(() => roomLinkFor(code), [code]);
   const [qr, setQr] = useState("");
   const [copied, setCopied] = useState(false);
@@ -892,31 +957,32 @@ function RoomShare({ code, status, connected }) {
   }, [link]);
   const copy = async () => { try { await navigator.clipboard.writeText(link); setCopied(true); setTimeout(() => setCopied(false), 1400); } catch {} };
   const share = async () => {
-    try { if (navigator.share) await navigator.share({ title: "Murray's Game", text: "Join my room", url: link }); else copy(); } catch {}
+    try { if (navigator.share) await navigator.share({ title: "Murray's Game", text: t("share.joinMyRoom"), url: link }); else copy(); } catch {}
   };
   const canShare = typeof navigator !== "undefined" && !!navigator.share;
   const dot = status === "online" ? "var(--green)" : status === "error" ? "var(--red)" : "var(--amber)";
-  const msg = status === "online" ? "Room is live, share away"
-    : status === "error" ? "That code is taken. Leave and re-open the room"
-    : "Opening the room…";
+  const msg = status === "online" ? t("share.live")
+    : status === "error" ? t("share.taken")
+    : t("share.opening");
   return (
     <div className="fb-card fb-stack fb-center">
-      <h2 className="fb-h2">Share the room</h2>
+      <h2 className="fb-h2">{t("share.shareRoom")}</h2>
       <p className="fb-statusline"><span className="fb-statusdot" style={{ background: dot }} /> {msg}</p>
-      {qr && <img className="fb-qr" src={qr} alt="QR code to join the room" width={200} height={200} />}
-      <p className="fb-tiny">Scan it, or send the link. Code: <b className="fb-code">{code}</b></p>
-      <input className="fb-input mono fb-linkfield" readOnly value={link} onFocus={(e) => e.target.select()} aria-label="Room link" />
+      {qr && <img className="fb-qr" src={qr} alt={t("share.qrAlt")} width={200} height={200} />}
+      <p className="fb-tiny">{t("share.scanSend")} <b className="fb-code">{code}</b></p>
+      <input className="fb-input mono fb-linkfield" readOnly value={link} onFocus={(e) => e.target.select()} aria-label={t("share.roomLink")} />
       <div className="fb-row fb-sharebtns">
-        <button className="fb-btn" onClick={copy}>{copied ? "Copied ✓" : "Copy link"}</button>
-        {canShare && <button className="fb-btn fb-ghost" onClick={share}>Share…</button>}
+        <button className="fb-btn" onClick={copy}>{copied ? t("share.copied") : t("share.copyLink")}</button>
+        {canShare && <button className="fb-btn fb-ghost" onClick={share}>{t("share.shareDots")}</button>}
       </div>
-      <p className="fb-tiny">{connected} {connected === 1 ? "phone" : "phones"} connected</p>
+      <p className="fb-tiny">{t("share.connectedCount", { n: connected })}</p>
     </div>
   );
 }
 // `count` is how many words this person has already dropped in; `target` is
 // the soft per-player goal. The deck button only ever tops you up to the goal.
 function WordAdder({ onAdd, count = 0, target = 0 }) {
+  const t = useT();
   const [draft, setDraft] = useState("");
   const add = () => { const w = draft.trim(); if (!w) return; onAdd([w]); setDraft(""); };
   const remaining = target ? Math.max(0, target - count) : 0;
@@ -925,21 +991,21 @@ function WordAdder({ onAdd, count = 0, target = 0 }) {
     <div className="fb-stack">
       {target > 0 && (
         <div className={`fb-wordprog ${done ? "done" : ""}`}>
-          <span>Your words <b>{count}/{target}</b></span>
-          <span>{done ? "✓ that's plenty, add more if you like" : `${remaining} to go`}</span>
+          <span>{t("words.progressLead")} <b>{count}/{target}</b></span>
+          <span>{done ? t("words.plenty") : t("words.toGo", { n: remaining })}</span>
         </div>
       )}
       <div className="fb-row">
-        <input className="fb-input" value={draft} placeholder="Type a word…" maxLength={40} autoFocus
+        <input className="fb-input" value={draft} placeholder={t("words.typeWord")} maxLength={40} autoFocus
           onChange={(e) => setDraft(e.target.value)} onKeyDown={(e) => e.key === "Enter" && add()} />
-        <button className="fb-btn fb-add" onClick={add}>Add</button>
+        <button className="fb-btn fb-add" onClick={add}>{t("common.add")}</button>
       </div>
       {remaining > 0 && (
         <button className="fb-btn fb-ghost" onClick={() => onAdd(sampleDeck(remaining))}>
-          Fill my {remaining} from Murray's deck
+          {t("words.fillMine", { n: remaining })}
         </button>
       )}
-      {count > 0 && <p className="fb-tiny">Your words stay hidden from everyone until they're in play.</p>}
+      {count > 0 && <p className="fb-tiny">{t("words.hidden")}</p>}
     </div>
   );
 }
@@ -947,14 +1013,15 @@ function WordAdder({ onAdd, count = 0, target = 0 }) {
 // "everyone did their share" target (players × WORDS_PER_PLAYER); once there,
 // it keeps offering a chunk so the host can build as big a bowl as they like.
 function DeckFill({ bowl, players, onAdd }) {
+  const t = useT();
   const target = Math.max(MIN_WORDS, players * WORDS_PER_PLAYER);
   const need = Math.max(0, target - bowl.length);
   const amount = need > 0 ? need : 10;
   const words = useMemo(() => deckTopUp(bowl, amount), [bowl, amount]);
-  if (words.length === 0) return <p className="fb-tiny">The whole deck is already in the bowl.</p>;
+  if (words.length === 0) return <p className="fb-tiny">{t("deck.allIn")}</p>;
   return (
     <button className="fb-btn fb-ghost" onClick={() => onAdd(words)}>
-      {need > 0 ? `Fill the bowl from Murray's deck (+${words.length})` : `Add ${words.length} more from Murray's deck`}
+      {need > 0 ? t("deck.fillBowl", { n: words.length }) : t("deck.addMore", { n: words.length })}
     </button>
   );
 }
@@ -979,7 +1046,16 @@ const CSS = `
   background-image:url("data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20width='180'%20height='180'%3E%3Cfilter%20id='n'%3E%3CfeTurbulence%20type='fractalNoise'%20baseFrequency='0.82'%20numOctaves='2'%20stitchTiles='stitch'/%3E%3CfeColorMatrix%20type='saturate'%20values='0'/%3E%3C/filter%3E%3Crect%20width='180'%20height='180'%20filter='url(%23n)'/%3E%3C/svg%3E");
   background-size:180px 180px;}
 .fb-shell{width:100%;max-width:540px;position:relative;z-index:1;}
-.fb-brand{font-family:Anton,'Arial Narrow',sans-serif;letter-spacing:.03em;font-size:clamp(32px,9.5vw,46px);line-height:.9;text-align:center;width:max-content;max-width:100%;margin:6px auto 20px;color:var(--ink);text-transform:uppercase;text-shadow:3px 3px 0 var(--accent);}
+.fb-brand{font-family:Anton,'Arial Narrow',sans-serif;letter-spacing:.03em;font-size:clamp(32px,9.5vw,46px);line-height:.9;text-align:center;width:max-content;max-width:100%;margin:0;color:var(--ink);text-transform:uppercase;text-shadow:3px 3px 0 var(--accent);}
+
+/* brand + language flag picker */
+.fb-topbar{display:flex;flex-direction:column;align-items:center;gap:11px;margin:6px 0 18px;}
+.fb-langs{display:inline-flex;gap:3px;background:var(--panel);border:1.5px solid var(--line);border-radius:999px;padding:3px;}
+.fb-lang{display:inline-flex;align-items:center;gap:6px;background:transparent;border:none;border-radius:999px;padding:6px 12px;cursor:pointer;
+  font-family:'Space Mono',monospace;font-size:12px;font-weight:700;letter-spacing:.04em;color:var(--muted);transition:background .12s,color .12s;}
+.fb-lang .fb-flag{font-size:15px;line-height:1;}
+.fb-lang.on{background:var(--ink);color:var(--paper);}
+.fb-lang:focus-visible{outline:2.5px solid var(--ink);outline-offset:2px;}
 
 /* clean off-white paper cards on the warm desk. */
 .fb-card{position:relative;border:1px solid var(--line);border-radius:12px;padding:22px;
