@@ -1176,9 +1176,7 @@ const CSS = `
 
 .fb-sliprow{display:flex;gap:12px;justify-content:center;margin-bottom:6px;}
 .fb-sliprow span{position:relative;font-family:'Space Mono',monospace;font-weight:700;font-size:11px;text-transform:uppercase;letter-spacing:.1em;color:var(--accent);
-  background:var(--slip);padding:9px 12px 8px;border:2.5px solid var(--ink);border-radius:5px;box-shadow:3px 3px 0 var(--ink);}
-.fb-sliprow span::before{content:"";position:absolute;top:-2px;left:5px;right:5px;height:6px;
-  background:radial-gradient(circle at 5px -1px, var(--paper) 0 4px, transparent 4.4px) repeat-x;background-size:10px 6px;}
+  background:var(--slip);padding:8px 12px;border:2.5px solid var(--ink);border-radius:5px;box-shadow:3px 3px 0 var(--ink);}
 .fb-sliprow span:nth-child(1){transform:rotate(-3deg);}
 .fb-sliprow span:nth-child(2){transform:rotate(2deg);}
 .fb-sliprow span:nth-child(3){transform:rotate(-2deg);}
