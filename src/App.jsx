@@ -48,6 +48,30 @@ function LangSwitcher() {
   );
 }
 
+/* ----------------------------- accent ----------------------------- *
+ * The app's highlight colour. It defaults to the brand neon blue, but
+ * once you join a group it follows THAT group's colour - so your buttons,
+ * the brand shadow and the live flag all wear your team's colour. It's a
+ * per-device cue (set by the host/client subtree from the player's own
+ * team) and resets to the brand when you're not in a group.
+ * ------------------------------------------------------------------ */
+const BRAND_ACCENT = "#1F51FF";
+const AccentCtx = createContext(null);
+function AccentProvider({ children }) {
+  const [accent, setAccentState] = useState(BRAND_ACCENT);
+  // Guard against redundant renders when the same colour is reasserted.
+  const setAccent = useCallback((c) => setAccentState(c || BRAND_ACCENT), []);
+  const value = useMemo(() => ({ accent, setAccent }), [accent, setAccent]);
+  return <AccentCtx.Provider value={value}>{children}</AccentCtx.Provider>;
+}
+const useAccent = () => useContext(AccentCtx);
+// Drive the app accent from the player's team colour for as long as the
+// component is mounted, restoring the brand colour when they leave.
+function useFollowTeamAccent(color) {
+  const { setAccent } = useAccent();
+  useEffect(() => { setAccent(color || BRAND_ACCENT); return () => setAccent(BRAND_ACCENT); }, [color, setAccent]);
+}
+
 /* ================================================================== *
  * MURRAY'S GAME - a 5-round Fishbowl for South African students.
  * P2P rooms, no backend.
@@ -136,12 +160,15 @@ function peerChannel(conn) {
 export default function App() {
   return (
     <LangProvider>
-      <AppInner />
+      <AccentProvider>
+        <AppInner />
+      </AccentProvider>
     </LangProvider>
   );
 }
 function AppInner() {
   const t = useT();
+  const { accent } = useAccent();
   const initialRoom = useRef(readRoomParam()).current;
   // Restore the role across a reload (per-tab), so a refresh resumes hosting /
   // playing instead of dropping back to the landing page.
@@ -151,7 +178,7 @@ function AppInner() {
     setRoleState(r);
   }, []);
   return (
-    <div className="fb-root" style={{ "--accent": "#C2683F" }}>
+    <div className="fb-root" style={{ "--accent": accent }}>
       <style>{CSS}</style>
       <div className="fb-shell">
         <div className="fb-topbar">
@@ -210,6 +237,16 @@ function HostApp({ onExit }) {
   const peerRef = useRef(null);
 
   const view = useMemo(() => viewFor(state, hostId), [state, hostId]);
+
+  // Once the host picks a group, the whole UI's highlight follows that
+  // group's colour. Derived from the team's palette slot so it holds in the
+  // lobby (before START_GAME stamps colours on the teams) too.
+  const myTeamColor = useMemo(() => {
+    const tid = state.players.find((p) => p.id === hostId)?.teamId;
+    const i = state.teams.findIndex((tm) => tm.id === tid);
+    return i >= 0 ? PALETTE[i % PALETTE.length] : null;
+  }, [state.players, state.teams, hostId]);
+  useFollowTeamAccent(myTeamColor);
 
   // Persist enough to recover the room on reload (per-tab).
   useEffect(() => { ssSet(PK.host, { hostId, roomCode, name, open, state }); }, [hostId, roomCode, name, open, state]);
@@ -460,6 +497,8 @@ function ClientApp({ onExit, initialRoom }) {
   const myTeam = me?.teamId ?? null;
   const myWords = me?.words ?? 0;
   const target = lobby?.wordsPerPlayer ?? WORDS_PER_PLAYER;
+  // Highlight follows the group you join (brand colour until then).
+  useFollowTeamAccent(lobby?.teams.find((tm) => tm.id === myTeam)?.color ?? null);
 
   // Hoisted function declarations so the mutually-recursive reconnect helpers
   // can reference each other freely; they read live values from refs, so no
@@ -630,7 +669,7 @@ function ReconnectBanner({ show, online }) {
 // word immediately and reconcile when the host's authoritative view lands.
 // The host itself dispatches synchronously, so it shows the real word as-is.
 function GameView({ view, onIntent, optimistic = false }) {
-  const accent = view.phase === "endgame" ? "#C2683F" : view.round?.accent || "#C2683F";
+  const accent = view.phase === "endgame" ? "#1F51FF" : view.round?.accent || "#1F51FF";
   return (
     <div style={{ "--accent": accent }}>
       {view.phase === "ready" && <Ready v={view} onIntent={onIntent} />}
@@ -1119,7 +1158,7 @@ const CSS = `
   background:var(--slip);padding:9px 12px 8px;border-radius:0 0 4px 4px;box-shadow:0 7px 14px rgba(20,26,34,.16);}
 .fb-sliprow span::before{content:"";position:absolute;top:-1px;left:5px;right:5px;height:5px;
   background:radial-gradient(circle at 4px -1px, var(--paper) 0 3px, transparent 3.4px) repeat-x;background-size:8px 5px;}
-.fb-sliprow span:nth-child(1){transform:rotate(-5deg);color:#C2683F;}
+.fb-sliprow span:nth-child(1){transform:rotate(-5deg);color:#1F51FF;}
 .fb-sliprow span:nth-child(2){transform:rotate(3deg);color:#3B6EA5;}
 .fb-sliprow span:nth-child(3){transform:rotate(-2deg);color:#6B5B9A;}
 
