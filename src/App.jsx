@@ -610,9 +610,22 @@ const CSS = `
   background-size:180px 180px;}
 .fb-shell{width:100%;max-width:540px;position:relative;z-index:1;}
 .fb-brand{font-family:Anton,'Arial Narrow',sans-serif;letter-spacing:.06em;font-size:22px;text-align:center;margin:2px 0 18px;color:var(--ink);text-transform:uppercase;}
+.fb-brand::after{content:"";display:block;width:132px;height:4px;margin:9px auto 0;border-radius:3px;
+  background:linear-gradient(90deg,#007A4D 0 30%,#FFB81C 30% 45%,#DE3831 45% 70%,#0b3aa1 70% 100%);
+  box-shadow:0 1px 0 rgba(255,255,255,.55);}
 
-.fb-card{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:20px;
-  box-shadow:0 1px 0 #fff inset, 0 14px 30px rgba(40,28,18,.10);}
+/* every card is a leaf from a South African exercise book: feint blue
+   rule lines, a red margin down the left, and a punched binding strip. */
+.fb-card{position:relative;border:1px solid var(--line);border-radius:12px;padding:34px 22px 22px 30px;
+  background-color:var(--panel);
+  background-image:
+    linear-gradient(90deg, transparent 0 22px, rgba(201,68,68,.42) 22px 23px, transparent 23px),
+    repeating-linear-gradient(180deg, transparent 0 27px, rgba(54,86,148,.13) 27px 28px);
+  background-position:0 0, 0 34px;
+  box-shadow:0 1px 0 #fff inset, 0 14px 30px rgba(40,28,18,.12);}
+.fb-card::before{content:"";position:absolute;left:16px;right:16px;top:12px;height:12px;pointer-events:none;
+  background-image:radial-gradient(circle at 50% 50%, var(--paper) 0 4px, rgba(34,28,24,.22) 4px 5px, transparent 5.5px);
+  background-size:30px 12px;background-repeat:repeat-x;}
 .fb-stack{display:flex;flex-direction:column;gap:12px;}
 .fb-center{text-align:center;align-items:center;}
 
