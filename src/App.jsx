@@ -99,10 +99,10 @@ export default function App() {
     setRoleState(r);
   }, []);
   return (
-    <div className="fb-root" style={{ "--accent": "#FF6A3D" }}>
+    <div className="fb-root" style={{ "--accent": "#C2683F" }}>
       <style>{CSS}</style>
       <div className="fb-shell">
-        <div className="fb-brand">🇿🇦 MURRAY'S GAME</div>
+        <div className="fb-brand">MURRAY'S GAME</div>
         {role && <div className="fb-topbackwrap"><button className="fb-topback" onClick={() => setRole(null)}>← Leave to start</button></div>}
         {!role && <Landing onPick={setRole} />}
         {role === "host" && <HostApp onExit={() => setRole(null)} />}
@@ -562,7 +562,7 @@ function ReconnectBanner({ show, online }) {
 // word immediately and reconcile when the host's authoritative view lands.
 // The host itself dispatches synchronously, so it shows the real word as-is.
 function GameView({ view, onIntent, optimistic = false }) {
-  const accent = view.phase === "endgame" ? "#FF6A3D" : view.round?.accent || "#FF6A3D";
+  const accent = view.phase === "endgame" ? "#C2683F" : view.round?.accent || "#C2683F";
   return (
     <div style={{ "--accent": accent }}>
       {view.phase === "ready" && <Ready v={view} onIntent={onIntent} />}
@@ -918,7 +918,7 @@ function WordAdder({ onAdd, count = 0, target = 0 }) {
       </div>
       {remaining > 0 && (
         <button className="fb-btn fb-ghost" onClick={() => onAdd(sampleDeck(remaining))}>
-          🇿🇦 Fill my {remaining} from Murray's deck
+          Fill my {remaining} from Murray's deck
         </button>
       )}
       {count > 0 && <p className="fb-tiny">Your words stay hidden from everyone until they're in play.</p>}
@@ -936,7 +936,7 @@ function DeckFill({ bowl, players, onAdd }) {
   if (words.length === 0) return <p className="fb-tiny">The whole deck is already in the bowl.</p>;
   return (
     <button className="fb-btn fb-ghost" onClick={() => onAdd(words)}>
-      🇿🇦 {need > 0 ? `Fill the bowl from Murray's deck (+${words.length})` : `Add ${words.length} more from Murray's deck`}
+      {need > 0 ? `Fill the bowl from Murray's deck (+${words.length})` : `Add ${words.length} more from Murray's deck`}
     </button>
   );
 }
@@ -962,9 +962,6 @@ const CSS = `
   background-size:180px 180px;}
 .fb-shell{width:100%;max-width:540px;position:relative;z-index:1;}
 .fb-brand{font-family:Anton,'Arial Narrow',sans-serif;letter-spacing:.06em;font-size:22px;text-align:center;width:max-content;max-width:100%;margin:2px auto 18px;color:var(--ink);text-transform:uppercase;}
-.fb-brand::after{content:"";display:block;width:100%;height:4px;margin:9px auto 0;border-radius:3px;
-  background:linear-gradient(90deg,#007A4D 0 30%,#FFB81C 30% 45%,#DE3831 45% 70%,#0b3aa1 70% 100%);
-  box-shadow:0 1px 0 rgba(255,255,255,.55);}
 
 /* clean off-white paper cards on the warm desk. */
 .fb-card{position:relative;border:1px solid var(--line);border-radius:12px;padding:22px;
@@ -1019,9 +1016,9 @@ const CSS = `
   background:var(--slip);padding:9px 12px 8px;border-radius:0 0 4px 4px;box-shadow:0 7px 14px rgba(20,26,34,.16);}
 .fb-sliprow span::before{content:"";position:absolute;top:-1px;left:5px;right:5px;height:5px;
   background:radial-gradient(circle at 4px -1px, var(--paper) 0 3px, transparent 3.4px) repeat-x;background-size:8px 5px;}
-.fb-sliprow span:nth-child(1){transform:rotate(-5deg);color:#FF6A3D;}
-.fb-sliprow span:nth-child(2){transform:rotate(3deg);color:#2C6EE6;}
-.fb-sliprow span:nth-child(3){transform:rotate(-2deg);color:#7A4DE0;}
+.fb-sliprow span:nth-child(1){transform:rotate(-5deg);color:#C2683F;}
+.fb-sliprow span:nth-child(2){transform:rotate(3deg);color:#3B6EA5;}
+.fb-sliprow span:nth-child(3){transform:rotate(-2deg);color:#6B5B9A;}
 
 .fb-steps{display:flex;gap:8px;}
 .fb-step{flex:1;display:flex;align-items:center;justify-content:center;gap:7px;background:var(--panel);border:1.5px solid var(--line);border-radius:8px;padding:11px 6px;font-family:'Space Mono',monospace;font-weight:700;font-size:12px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);cursor:pointer;}

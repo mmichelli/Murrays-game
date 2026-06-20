@@ -10,17 +10,17 @@
 
 export const ROUNDS = [
   { n: 1, name: "Describe",   icon: "🎭", setup: "Stand in front of your team.",
-    allowed: "Sentences, descriptions, sounds, gestures.", restrict: "Don't say the word, parts of it, or rhymes.", accent: "#FF6A3D" },
+    allowed: "Sentences, descriptions, sounds, gestures.", restrict: "Don't say the word, parts of it, or rhymes.", accent: "#C2683F" },
   { n: 2, name: "Charades",   icon: "🏃", setup: "Stand in front of your team.",
-    allowed: "Full-body acting and miming.", restrict: "Silence. No speaking, whispering or mouthing.", accent: "#2C6EE6" },
+    allowed: "Full-body acting and miming.", restrict: "Silence. No speaking, whispering or mouthing.", accent: "#3B6EA5" },
   { n: 3, name: "One Word",   icon: "💬", setup: "Stand in front of your team.",
-    allowed: "Exactly one word, total, per card.", restrict: "Repeat it, but never change it or gesture.", accent: "#E8348B" },
+    allowed: "Exactly one word, total, per card.", restrict: "Repeat it, but never change it or gesture.", accent: "#B15E86" },
   { n: 4, name: "Hands Only", icon: "✋", setup: "Behind the couch — only hands show.",
-    allowed: "Fingers, hands and forearms.", restrict: "Silence. Head, face, torso, legs hidden.", accent: "#1AA67E" },
+    allowed: "Fingers, hands and forearms.", restrict: "Silence. Head, face, torso, legs hidden.", accent: "#3E8E72" },
   { n: 5, name: "Face Only",  icon: "🤨", setup: "Peek over the couch — only your face.",
-    allowed: "Eyes, brows, nose, mouth, head tilts.", restrict: "Silence. Neck down stays hidden.", accent: "#7A4DE0" },
+    allowed: "Eyes, brows, nose, mouth, head tilts.", restrict: "Silence. Neck down stays hidden.", accent: "#6B5B9A" },
 ];
-export const PALETTE = ["#2C6EE6", "#E8348B", "#1AA67E", "#7A4DE0", "#FF6A3D", "#0E8C9B"];
+export const PALETTE = ["#3B6EA5", "#B15E86", "#3E8E72", "#6B5B9A", "#C2683F", "#2E8B8B"];
 export const MIN_WORDS = 4, MAX_TEAMS = 6, TURN_SECONDS = 60;
 // How many upcoming cards the active clue-giver's device may hold, so a tap
 // flips instantly and a brief connection blip doesn't stall the turn. The
