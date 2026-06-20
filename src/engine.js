@@ -93,9 +93,16 @@ export const ICE = [
   { urls: "turn:openrelay.metered.ca:443", username: "openrelayproject", credential: "openrelayproject" },
   { urls: "turn:openrelay.metered.ca:443?transport=tcp", username: "openrelayproject", credential: "openrelayproject" },
 ];
+// Resolve the ICE servers to use. A page can set `globalThis.MRYSG_ICE` to a
+// list of RTCIceServers (e.g. a dedicated TURN credential) to override the
+// free defaults at runtime — no rebuild or redeploy needed.
+export function resolveIce() {
+  const o = typeof globalThis !== "undefined" ? globalThis.MRYSG_ICE : null;
+  return Array.isArray(o) && o.length ? o : ICE;
+}
 // Single source of truth for how we open a PeerJS peer — every `new Peer`
 // MUST go through this so the ICE servers above actually get used.
-export const peerOptions = (extra = {}) => ({ debug: 1, config: { iceServers: ICE }, ...extra });
+export const peerOptions = (extra = {}) => ({ debug: 1, config: { iceServers: resolveIce() }, ...extra });
 
 export const uid = () => Math.random().toString(36).slice(2, 8);
 export const shuffle = (a0) => { const a = [...a0]; for (let i = a.length - 1; i > 0; i--) { const j = (Math.random() * (i + 1)) | 0;[a[i], a[j]] = [a[j], a[i]]; } return a; };

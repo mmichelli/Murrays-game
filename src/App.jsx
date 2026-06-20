@@ -70,6 +70,10 @@ function peerChannel(conn) {
   conn.on("data", (d) => ch.onmessage && ch.onmessage({ data: d }));
   conn.on("close", () => ch.onclose && ch.onclose());
   conn.on("error", () => ch.onclose && ch.onclose());
+  // Phones often drop the WebRTC link without a clean close (backgrounding,
+  // signal loss). Catch the ICE failure so the host marks them offline and
+  // frees the seat for their reconnect instead of holding a dead channel.
+  conn.on("iceStateChanged", (st) => { if (st === "failed" || st === "closed") ch.onclose && ch.onclose(); });
   return ch;
 }
 
@@ -332,6 +336,13 @@ function ClientApp({ onExit, initialRoom }) {
     conn.on("data", (d) => { try { const m = JSON.parse(d); if (m.t === "lobby") setLobby(m.lobby); else if (m.t === "view") setView(m.view); } catch {} });
     conn.on("close", () => { if (aliveRef.current) scheduleRetry(); });
     conn.on("error", () => { if (aliveRef.current) scheduleRetry(); });
+    // A clean "close" doesn't always fire when WebRTC dies — watch the ICE
+    // state so a silent failure still kicks off a reconnect.
+    conn.on("iceStateChanged", (st) => {
+      if (!aliveRef.current) return;
+      if (st === "failed") scheduleRetry();
+      else if (st === "disconnected") setReconnecting(true); // may recover on its own
+    });
   }
   async function spinUp() {
     const { default: Peer } = await import("peerjs");
@@ -403,13 +414,13 @@ function ClientApp({ onExit, initialRoom }) {
   }, []);
 
   if (view && view.phase !== "lobby") return (<>
-    <ReconnectBanner show={reconnecting} />
+    <ReconnectBanner show={reconnecting} onRetry={reconnectNow} />
     <GameView view={view} onIntent={(action) => send({ t: "intent", action })} />
   </>);
 
   return (
     <div className="fb-card fb-stack">
-      <ReconnectBanner show={reconnecting && step === "lobby"} />
+      <ReconnectBanner show={reconnecting && step === "lobby"} onRetry={reconnectNow} />
       <h1 className="fb-h1">Join a room</h1>
       {step === "form" && (<>
         {initialRoom && <p className="fb-muted">Joining room <b className="fb-code">{initialRoom}</b> — just pop your name in.</p>}
@@ -438,9 +449,14 @@ function ClientApp({ onExit, initialRoom }) {
     </div>
   );
 }
-function ReconnectBanner({ show }) {
+function ReconnectBanner({ show, onRetry }) {
   if (!show) return null;
-  return <div className="fb-reconnect">⟳ Connection dropped — getting you back in…</div>;
+  return (
+    <div className="fb-reconnect">
+      <span>⟳ Connection dropped — getting you back in…</span>
+      {onRetry && <button className="fb-reconnectbtn" onClick={onRetry}>Retry now</button>}
+    </div>
+  );
 }
 
 /* ===================== shared in-game view ======================= */
@@ -718,7 +734,10 @@ const CSS = `
 .fb-wordprog.done{color:var(--green);}.fb-wordprog.done b{color:var(--green);}
 .fb-reconnect{position:sticky;top:0;z-index:60;margin-bottom:12px;background:var(--amber);color:#fff;border-radius:8px;
   padding:9px 13px;font-family:'Space Mono',monospace;font-weight:700;font-size:12px;letter-spacing:.04em;text-align:center;
-  box-shadow:0 6px 16px rgba(40,28,18,.22);}
+  box-shadow:0 6px 16px rgba(40,28,18,.22);display:flex;align-items:center;justify-content:center;gap:10px;flex-wrap:wrap;}
+.fb-reconnectbtn{background:rgba(255,255,255,.22);border:1.5px solid #fff;color:#fff;border-radius:6px;padding:5px 10px;
+  font-family:inherit;font-weight:700;font-size:11px;letter-spacing:.04em;cursor:pointer;text-transform:uppercase;}
+.fb-reconnectbtn:hover{background:rgba(255,255,255,.34);}
 
 .fb-btn{background:var(--ink);color:var(--paper);border:none;border-radius:8px;padding:14px 16px;font-size:16px;font-weight:800;
   font-family:Archivo,sans-serif;cursor:pointer;width:100%;box-shadow:3px 3px 0 var(--accent);transition:transform .08s,box-shadow .08s;}

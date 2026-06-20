@@ -277,4 +277,14 @@ describe("peer / ICE config", () => {
     expect(opts.config.iceServers).toBe(ICE);          // wired through, not dropped
     expect(peerOptions({ debug: 3 }).debug).toBe(3);   // overridable
   });
+  it("a runtime override (e.g. a dedicated TURN) replaces the free defaults", () => {
+    const custom = [{ urls: "turn:my.turn:3478", username: "u", credential: "p" }];
+    globalThis.MRYSG_ICE = custom;
+    try {
+      expect(peerOptions().config.iceServers).toBe(custom);
+    } finally {
+      delete globalThis.MRYSG_ICE;
+    }
+    expect(peerOptions().config.iceServers).toBe(ICE); // falls back once cleared
+  });
 });
