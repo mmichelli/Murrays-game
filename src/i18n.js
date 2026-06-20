@@ -49,10 +49,10 @@ export function saveLang(code) { try { localStorage.setItem(LS_KEY, code); } cat
  * ------------------------------------------------------------------ */
 const STRINGS = {
   en: {
-    common: { leave: "← Leave to start", yourName: "Your name", add: "Add" },
+    common: { home: "Back to start", yourName: "Your name", add: "Add" },
     landing: {
       lead: "The legendary game you might know as", or: "or", hatGame: "the Hat Game",
-      tail: "Everyone scribbles words into one bowl, then teams race to make each other guess them.",
+      tail: "Everyone adds their words to one shared wordlist, then teams race to make each other guess them.",
       harder: "Same words, all five rounds, each one harder:",
       openRoom: "Open a room", joinRoom: "Join a room",
       slips: ["talk", "mime", "peek"],
@@ -60,14 +60,14 @@ const STRINGS = {
     },
     host: {
       hosting: "You're hosting", createRoom: "Create the room", host: "Host",
-      forceNext: "Force next turn", endGame: "End game", playAgain: "Play again, same bowl",
+      forceNext: "Force next turn", endGame: "End game", playAgain: "Play again, same wordlist",
     },
-    steps: { invite: "Invite", groups: "Groups", bowl: "Bowl" },
+    steps: { invite: "Invite", groups: "Groups", bowl: "Wordlist" },
     lobby: {
-      nextGroups: "Next · groups →", nextBowl: "Next · the bowl →",
+      nextGroups: "Next · groups →", nextBowl: "Next · the wordlist →",
       groupsTap: ({ n }) => `Groups · ${n} · tap to join`,
-      theBowl: "The bowl",
-      bowlInfo: ({ x }) => `in the bowl. Everyone adds at once. Aim for ${x} each.`,
+      theBowl: "The wordlist",
+      bowlInfo: ({ x }) => `in the wordlist. Everyone adds at once. Aim for ${x} each.`,
       start: "Start game", waitPlayers: "Waiting for players to join",
       addMore: ({ n }) => `Add ${n} more words`,
       needGroup: "Everyone needs a group", needTwo: "Need 2 groups with players",
@@ -78,7 +78,7 @@ const STRINGS = {
       roomCode: "Room code", join: "Join room", connecting: "Connecting…",
       reaching: "Reaching the room…", roomNotAnswering: "Room not answering yet, retrying…",
       inRoom: "In the room",
-      bowlInfo: "in the bowl. Everyone's adding at once.",
+      bowlInfo: "in the wordlist. Everyone's adding at once.",
       waitHost: "Waiting for the host to start…", joinGroupReady: "Join a group to be ready.",
     },
     reconnect: {
@@ -130,8 +130,8 @@ const STRINGS = {
       hidden: "Your words stay hidden from everyone until they're in play.",
     },
     deck: {
-      allIn: "The whole deck is already in the bowl.",
-      fillBowl: ({ n }) => `Fill the bowl from Murray's deck (+${n})`,
+      allIn: "The whole deck is already in the wordlist.",
+      fillBowl: ({ n }) => `Fill the wordlist from Murray's deck (+${n})`,
       addMore: ({ n }) => `Add ${n} more from Murray's deck`,
     },
     lang: { label: "Language" },
@@ -144,10 +144,10 @@ const STRINGS = {
     },
   },
   no: {
-    common: { leave: "← Forlat og start på nytt", yourName: "Ditt navn", add: "Legg til" },
+    common: { home: "Tilbake til start", yourName: "Ditt navn", add: "Legg til" },
     landing: {
       lead: "Det legendariske spillet du kanskje kjenner som", or: "eller", hatGame: "Hatteleken",
-      tail: "Alle skribler ord ned i én bolle, så kappes lagene om å få hverandre til å gjette dem.",
+      tail: "Alle legger til ordene sine i én felles ordliste, så kappes lagene om å få hverandre til å gjette dem.",
       harder: "Samme ord, alle fem runder, hver vanskeligere enn den forrige:",
       openRoom: "Åpne et rom", joinRoom: "Bli med i et rom",
       slips: ["snakk", "mim", "kikk"],
@@ -155,14 +155,14 @@ const STRINGS = {
     },
     host: {
       hosting: "Du er vert", createRoom: "Opprett rommet", host: "Vert",
-      forceNext: "Tving neste tur", endGame: "Avslutt spillet", playAgain: "Spill igjen, samme bolle",
+      forceNext: "Tving neste tur", endGame: "Avslutt spillet", playAgain: "Spill igjen, samme ordliste",
     },
-    steps: { invite: "Inviter", groups: "Grupper", bowl: "Bolle" },
+    steps: { invite: "Inviter", groups: "Grupper", bowl: "Ordliste" },
     lobby: {
-      nextGroups: "Neste · grupper →", nextBowl: "Neste · bollen →",
+      nextGroups: "Neste · grupper →", nextBowl: "Neste · ordlisten →",
       groupsTap: ({ n }) => `Grupper · ${n} · trykk for å bli med`,
-      theBowl: "Bollen",
-      bowlInfo: ({ x }) => `i bollen. Alle legger til samtidig. Sikt mot ${x} hver.`,
+      theBowl: "Ordlisten",
+      bowlInfo: ({ x }) => `i ordlisten. Alle legger til samtidig. Sikt mot ${x} hver.`,
       start: "Start spillet", waitPlayers: "Venter på at spillere blir med",
       addMore: ({ n }) => `Legg til ${n} ord til`,
       needGroup: "Alle trenger en gruppe", needTwo: "Trenger 2 grupper med spillere",
@@ -173,7 +173,7 @@ const STRINGS = {
       roomCode: "Romkode", join: "Bli med", connecting: "Kobler til…",
       reaching: "Når rommet…", roomNotAnswering: "Rommet svarer ikke ennå, prøver igjen…",
       inRoom: "I rommet",
-      bowlInfo: "i bollen. Alle legger til samtidig.",
+      bowlInfo: "i ordlisten. Alle legger til samtidig.",
       waitHost: "Venter på at verten starter…", joinGroupReady: "Bli med i en gruppe for å være klar.",
     },
     reconnect: {
@@ -225,8 +225,8 @@ const STRINGS = {
       hidden: "Ordene dine er skjult for alle til de er i spill.",
     },
     deck: {
-      allIn: "Hele kortstokken er allerede i bollen.",
-      fillBowl: ({ n }) => `Fyll bollen fra Murrays kortstokk (+${n})`,
+      allIn: "Hele kortstokken er allerede i ordlisten.",
+      fillBowl: ({ n }) => `Fyll ordlisten fra Murrays kortstokk (+${n})`,
       addMore: ({ n }) => `Legg til ${n} til fra Murrays kortstokk`,
     },
     lang: { label: "Språk" },

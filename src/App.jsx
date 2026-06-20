@@ -48,6 +48,56 @@ function LangSwitcher() {
   );
 }
 
+/* ----------------------------- accent ----------------------------- *
+ * The app's highlight colour. It defaults to the brand neon blue, but
+ * once you join a group it follows THAT group's colour - so your buttons,
+ * the brand shadow and the live flag all wear your team's colour. It's a
+ * per-device cue (set by the host/client subtree from the player's own
+ * team) and resets to the brand when you're not in a group.
+ * ------------------------------------------------------------------ */
+const BRAND_ACCENT = "#3B6EA5";
+const AccentCtx = createContext(null);
+function AccentProvider({ children }) {
+  const [accent, setAccentState] = useState(BRAND_ACCENT);
+  // Guard against redundant renders when the same colour is reasserted.
+  const setAccent = useCallback((c) => setAccentState(c || BRAND_ACCENT), []);
+  const value = useMemo(() => ({ accent, setAccent }), [accent, setAccent]);
+  return <AccentCtx.Provider value={value}>{children}</AccentCtx.Provider>;
+}
+const useAccent = () => useContext(AccentCtx);
+// Drive the app accent from the player's team colour for as long as the
+// component is mounted, restoring the brand colour when they leave.
+function useFollowTeamAccent(color) {
+  const { setAccent } = useAccent();
+  useEffect(() => { setAccent(color || BRAND_ACCENT); return () => setAccent(BRAND_ACCENT); }, [color, setAccent]);
+}
+
+/* --------------------- pixel-art round numbers -------------------- *
+ * Each round shows its number as a bold pixel-art digit (rendered as
+ * crisp inline SVG), so the marker matches the game's brutalist look and
+ * is identical on every device. '#' is a filled pixel; the digit inherits
+ * the surrounding text colour via currentColor.
+ * ------------------------------------------------------------------ */
+const ROUND_PIX = {
+  1: ["..###.", ".####.", "...##.", "...##.", "...##.", "...##.", "...##.", "...##.", ".#####"],
+  2: [".####.", "##..##", "....##", "...##.", "..##..", ".##...", "##....", "##....", "######"],
+  3: ["#####.", "....##", "....##", ".####.", ".####.", "....##", "....##", "....##", "#####."],
+  4: ["##..##", "##..##", "##..##", "######", "....##", "....##", "....##", "....##", "....##"],
+  5: ["######", "##....", "##....", "#####.", "....##", "....##", "....##", "##..##", ".####."],
+};
+// Render a round's sprite as inline SVG that scales with the font size and
+// stays pixel-crisp at any zoom.
+function RoundIcon({ n, className = "" }) {
+  const rows = ROUND_PIX[n];
+  if (!rows) return null;
+  const w = rows[0].length, h = rows.length, px = [];
+  rows.forEach((row, y) => { for (let x = 0; x < row.length; x++) if (row[x] === "#") px.push(<rect key={`${x},${y}`} x={x} y={y} width="1" height="1" />); });
+  return (
+    <svg className={`fb-pixicon ${className}`} viewBox={`0 0 ${w} ${h}`} fill="currentColor"
+      shapeRendering="crispEdges" role="img" aria-hidden="true">{px}</svg>
+  );
+}
+
 /* ================================================================== *
  * MURRAY'S GAME - a 5-round Fishbowl for South African students.
  * P2P rooms, no backend.
@@ -136,12 +186,15 @@ function peerChannel(conn) {
 export default function App() {
   return (
     <LangProvider>
-      <AppInner />
+      <AccentProvider>
+        <AppInner />
+      </AccentProvider>
     </LangProvider>
   );
 }
 function AppInner() {
   const t = useT();
+  const { accent } = useAccent();
   const initialRoom = useRef(readRoomParam()).current;
   // Restore the role across a reload (per-tab), so a refresh resumes hosting /
   // playing instead of dropping back to the landing page.
@@ -151,14 +204,13 @@ function AppInner() {
     setRoleState(r);
   }, []);
   return (
-    <div className="fb-root" style={{ "--accent": "#C2683F" }}>
+    <div className="fb-root" style={{ "--accent": accent }}>
       <style>{CSS}</style>
       <div className="fb-shell">
         <div className="fb-topbar">
-          <div className="fb-brand">MURRAY'S GAME</div>
+          <button type="button" className="fb-brand" onClick={() => setRole(null)} title={t("common.home")} aria-label={t("common.home")}>MURRAY'S GAME</button>
           <LangSwitcher />
         </div>
-        {role && <div className="fb-topbackwrap"><button className="fb-topback" onClick={() => setRole(null)}>{t("common.leave")}</button></div>}
         {!role && <Landing onPick={setRole} />}
         {role === "host" && <HostApp onExit={() => setRole(null)} />}
         {role === "client" && <ClientApp onExit={() => setRole(null)} initialRoom={initialRoom} />}
@@ -177,8 +229,7 @@ function Landing({ onPick }) {
         <ol className="fb-rounds">
           {ROUNDS.map((r) => (
             <li key={r.n} style={{ "--tc": r.accent }}>
-              <span className="fb-rnum">{r.n}</span>
-              <span className="fb-rname">{r.icon} {t(`round.${r.n}.name`)}</span>
+              <span className="fb-rname"><RoundIcon n={r.n} /> {t(`round.${r.n}.name`)}</span>
               <span className="fb-rgloss">{t(`round.${r.n}.gloss`)}</span>
             </li>
           ))}
@@ -211,6 +262,16 @@ function HostApp({ onExit }) {
   const peerRef = useRef(null);
 
   const view = useMemo(() => viewFor(state, hostId), [state, hostId]);
+
+  // Once the host picks a group, the whole UI's highlight follows that
+  // group's colour. Derived from the team's palette slot so it holds in the
+  // lobby (before START_GAME stamps colours on the teams) too.
+  const myTeamColor = useMemo(() => {
+    const tid = state.players.find((p) => p.id === hostId)?.teamId;
+    const i = state.teams.findIndex((tm) => tm.id === tid);
+    return i >= 0 ? PALETTE[i % PALETTE.length] : null;
+  }, [state.players, state.teams, hostId]);
+  useFollowTeamAccent(myTeamColor);
 
   // Persist enough to recover the room on reload (per-tab).
   useEffect(() => { ssSet(PK.host, { hostId, roomCode, name, open, state }); }, [hostId, roomCode, name, open, state]);
@@ -461,6 +522,8 @@ function ClientApp({ onExit, initialRoom }) {
   const myTeam = me?.teamId ?? null;
   const myWords = me?.words ?? 0;
   const target = lobby?.wordsPerPlayer ?? WORDS_PER_PLAYER;
+  // Highlight follows the group you join (brand colour until then).
+  useFollowTeamAccent(lobby?.teams.find((tm) => tm.id === myTeam)?.color ?? null);
 
   // Hoisted function declarations so the mutually-recursive reconnect helpers
   // can reference each other freely; they read live values from refs, so no
@@ -631,7 +694,7 @@ function ReconnectBanner({ show, online }) {
 // word immediately and reconcile when the host's authoritative view lands.
 // The host itself dispatches synchronously, so it shows the real word as-is.
 function GameView({ view, onIntent, optimistic = false }) {
-  const accent = view.phase === "endgame" ? "#C2683F" : view.round?.accent || "#C2683F";
+  const accent = view.phase === "endgame" ? "#3B6EA5" : view.round?.accent || "#3B6EA5";
   return (
     <div style={{ "--accent": accent }}>
       {view.phase === "ready" && <Ready v={view} onIntent={onIntent} />}
@@ -676,7 +739,7 @@ const RoundDots = ({ n }) => (
 );
 const RoundLine = ({ r }) => {
   const t = useT();
-  return <div className="fb-roundline"><span className="fb-roundtag">{r.icon} {t(`round.${r.n}.name`)}</span><RoundDots n={r.n} /></div>;
+  return <div className="fb-roundline"><span className="fb-roundtag"><RoundIcon n={r.n} /> {t(`round.${r.n}.name`)}</span><RoundDots n={r.n} /></div>;
 };
 const Rules = ({ r, tight }) => {
   const t = useT();
@@ -845,7 +908,7 @@ function Transition({ v, onIntent }) {
       <div className="fb-card fb-stack fb-center">
         <div className="fb-flash big">{tr("trans.roundOver")}</div>
         <p className="fb-paused">{tr("trans.pausedLead")} <b>{v.timeLeft}s</b> {tr("trans.pausedLeft")}</p>
-        <div className="fb-nextsetup">{r.icon} <Tr value={tr("trans.roundIs", { n: r.n, name: tr(`round.${r.n}.name`).toUpperCase() })} /><span>{tr(`round.${r.n}.setup`)}</span></div>
+        <div className="fb-nextsetup"><span className="fb-nextsetuphead"><RoundIcon n={r.n} /> <Tr value={tr("trans.roundIs", { n: r.n, name: tr(`round.${r.n}.name`).toUpperCase() })} /></span><span>{tr(`round.${r.n}.setup`)}</span></div>
         <RoundDots n={r.n} />
         <Rules r={r} />
         {v.canResume ? <button className="fb-btn fb-big" onClick={() => onIntent("RESUME")}>{tr("trans.resume")}</button>
@@ -870,7 +933,7 @@ function Endgame({ v }) {
       ))}
       <details className="fb-details"><summary>{tr("end.roundByRound")}</summary>
         <div className="fb-scroll"><table className="fb-table">
-          <thead><tr><th>{tr("end.team")}</th>{ROUNDS.map((r) => <th key={r.n}><span className="fb-th2">{r.icon}<span>{tr("end.r", { n: r.n })}</span></span></th>)}</tr></thead>
+          <thead><tr><th>{tr("end.team")}</th>{ROUNDS.map((r) => <th key={r.n}><span className="fb-th2"><RoundIcon n={r.n} className="fb-pixicon-th" /></span></th>)}</tr></thead>
           <tbody>{ranked.map((t) => <tr key={t.id}><td style={{ color: t.color }}>{t.name}</td>{v.scores[t.id].map((s, i) => <td key={i}>{s}</td>)}</tr>)}</tbody>
         </table></div>
       </details>
@@ -1046,16 +1109,25 @@ const CSS = `
   background-image:url("data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20width='180'%20height='180'%3E%3Cfilter%20id='n'%3E%3CfeTurbulence%20type='fractalNoise'%20baseFrequency='0.82'%20numOctaves='2'%20stitchTiles='stitch'/%3E%3CfeColorMatrix%20type='saturate'%20values='0'/%3E%3C/filter%3E%3Crect%20width='180'%20height='180'%20filter='url(%23n)'/%3E%3C/svg%3E");
   background-size:180px 180px;}
 .fb-shell{width:100%;max-width:540px;position:relative;z-index:1;}
-.fb-brand{font-family:Anton,'Arial Narrow',sans-serif;letter-spacing:.03em;font-size:clamp(32px,9.5vw,46px);line-height:.9;text-align:center;width:max-content;max-width:100%;margin:0;color:var(--ink);text-transform:uppercase;text-shadow:3px 3px 0 var(--accent);}
+.fb-brand{font-family:Anton,'Arial Narrow',sans-serif;letter-spacing:.03em;font-size:clamp(32px,9.5vw,46px);line-height:.9;text-align:center;width:max-content;max-width:100%;margin:0;color:var(--ink);text-transform:uppercase;text-shadow:3px 3px 0 var(--accent);
+  background:none;border:none;padding:0;cursor:pointer;display:block;transition:text-shadow .08s,transform .08s;}
+.fb-brand:hover{text-shadow:4px 4px 0 var(--accent);}
+.fb-brand:active{transform:translate(1px,1px);text-shadow:2px 2px 0 var(--accent);}
+.fb-brand:focus-visible{outline:2.5px solid var(--ink);outline-offset:4px;border-radius:4px;}
 
-/* brand + language flag picker */
+/* brand + language flag picker - neo-brutalist hard-edged toggles */
 .fb-topbar{display:flex;flex-direction:column;align-items:center;gap:11px;margin:6px 0 18px;}
-.fb-langs{display:inline-flex;gap:3px;background:var(--panel);border:1.5px solid var(--line);border-radius:999px;padding:3px;}
-.fb-lang{display:inline-flex;align-items:center;gap:6px;background:transparent;border:none;border-radius:999px;padding:6px 12px;cursor:pointer;
-  font-family:'Space Mono',monospace;font-size:12px;font-weight:700;letter-spacing:.04em;color:var(--muted);transition:background .12s,color .12s;}
-.fb-lang .fb-flag{font-size:15px;line-height:1;}
-.fb-lang.on{background:var(--ink);color:var(--paper);}
-.fb-lang:focus-visible{outline:2.5px solid var(--ink);outline-offset:2px;}
+.fb-langs{display:inline-flex;gap:7px;}
+.fb-lang{display:inline-flex;align-items:center;gap:6px;background:var(--panel);border:2.5px solid var(--ink);border-radius:6px;padding:6px 12px;cursor:pointer;
+  font-family:'Space Mono',monospace;font-size:12px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;color:var(--muted);
+  box-shadow:2px 2px 0 var(--ink);transition:transform .07s,box-shadow .07s;}
+.fb-lang:hover{transform:translate(-1px,-1px);box-shadow:3px 3px 0 var(--ink);color:var(--ink);}
+.fb-lang:active{transform:translate(2px,2px);box-shadow:0 0 0 var(--ink);}
+.fb-lang .fb-flag{font-size:16px;line-height:1;}
+.fb-lang.on{background:var(--ink);color:var(--paper);box-shadow:3px 3px 0 var(--accent);}
+.fb-lang.on:hover{transform:translate(-1px,-1px);box-shadow:4px 4px 0 var(--accent);color:var(--paper);}
+.fb-lang.on:active{transform:translate(3px,3px);box-shadow:0 0 0 var(--accent);}
+.fb-lang:focus-visible{outline:3px solid var(--accent);outline-offset:3px;}
 
 /* neo-brutalist paper cards: thick ink border + hard offset shadow. */
 .fb-card{position:relative;border:3px solid var(--ink);border-radius:6px;padding:22px;
@@ -1111,7 +1183,7 @@ const CSS = `
   background:var(--slip);padding:9px 12px 8px;border-radius:0 0 4px 4px;box-shadow:0 7px 14px rgba(20,26,34,.16);}
 .fb-sliprow span::before{content:"";position:absolute;top:-1px;left:5px;right:5px;height:5px;
   background:radial-gradient(circle at 4px -1px, var(--paper) 0 3px, transparent 3.4px) repeat-x;background-size:8px 5px;}
-.fb-sliprow span:nth-child(1){transform:rotate(-5deg);color:#C2683F;}
+.fb-sliprow span:nth-child(1){transform:rotate(-5deg);color:#1F51FF;}
 .fb-sliprow span:nth-child(2){transform:rotate(3deg);color:#3B6EA5;}
 .fb-sliprow span:nth-child(3){transform:rotate(-2deg);color:#6B5B9A;}
 
@@ -1120,9 +1192,12 @@ const CSS = `
 .fb-roundlisttop{font-family:'Space Mono',monospace;font-weight:700;font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);text-align:left;}
 .fb-rounds{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:9px;width:100%;}
 .fb-rounds li{display:flex;align-items:baseline;gap:9px;text-align:left;}
-.fb-rnum{font-family:Anton,sans-serif;font-size:17px;color:var(--tc);min-width:15px;flex:none;}
 .fb-rname{font-family:Archivo,sans-serif;font-weight:800;font-size:14.5px;color:var(--ink);white-space:nowrap;flex:none;}
 .fb-rgloss{color:var(--muted);font-size:13px;line-height:1.3;}
+/* chunky pixel-art round glyphs - scale with the text, stay crisp */
+.fb-pixicon{display:inline-block;width:0.9em;height:1.15em;vertical-align:-0.18em;flex:none;}
+.fb-roundtag .fb-pixicon{width:1em;height:1.25em;vertical-align:-0.22em;}
+.fb-pixicon-th{width:1.4em;height:1.7em;vertical-align:0;}
 
 .fb-steps{display:flex;gap:8px;}
 .fb-step{flex:1;display:flex;align-items:center;justify-content:center;gap:7px;background:var(--panel);border:2.5px solid var(--ink);border-radius:6px;padding:11px 6px;font-family:'Space Mono',monospace;font-weight:700;font-size:12px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);cursor:pointer;}
@@ -1212,6 +1287,7 @@ const CSS = `
 .fb-paused{margin:0;color:var(--muted);font-family:'Space Mono',monospace;font-size:13px;}.fb-paused b{color:var(--ink);font-size:18px;}
 .fb-nextsetup{font-family:Anton,sans-serif;font-size:21px;color:var(--accent);display:flex;flex-direction:column;gap:5px;line-height:1.1;}
 .fb-nextsetup span{font-family:Archivo,sans-serif;font-size:13px;color:var(--muted);}
+.fb-nextsetup .fb-nextsetuphead{font-family:Anton,sans-serif;font-size:21px;color:var(--accent);display:inline-flex;align-items:center;justify-content:center;gap:7px;}
 
 .fb-standings{display:flex;flex-wrap:wrap;gap:14px;justify-content:center;width:100%;box-sizing:border-box;color:var(--muted);font-size:13px;background:var(--panel);border:2.5px solid var(--ink);box-shadow:4px 4px 0 var(--ink);border-radius:6px;padding:11px 12px;margin-top:6px;font-family:'Space Mono',monospace;}
 .fb-standings b{font-family:Anton,sans-serif;font-weight:400;font-size:18px;vertical-align:-2px;}
@@ -1244,10 +1320,6 @@ const CSS = `
 .fb-hostbar{display:flex;gap:8px;align-items:center;justify-content:center;flex-wrap:wrap;margin-top:14px;color:var(--muted);font-size:11px;font-family:'Space Mono',monospace;text-transform:uppercase;letter-spacing:.1em;}
 .fb-hostbar button{background:var(--panel);border:2px solid var(--ink);color:var(--ink);border-radius:6px;padding:7px 11px;font-size:11px;cursor:pointer;font-family:inherit;text-transform:uppercase;letter-spacing:.08em;}
 .fb-hostbar button:hover{color:var(--ink);border-color:var(--ink);box-shadow:2px 2px 0 var(--ink);}
-.fb-topbackwrap{display:flex;justify-content:center;margin:-4px 0 16px;}
-.fb-topback{background:var(--panel);border:2px solid var(--ink);color:var(--ink);border-radius:6px;padding:7px 14px;
-  font-family:'Space Mono',monospace;font-size:11px;letter-spacing:.1em;text-transform:uppercase;cursor:pointer;}
-.fb-topback:hover{color:var(--ink);border-color:var(--ink);box-shadow:2px 2px 0 var(--ink);}
 
 @media (prefers-reduced-motion:reduce){
   .fb-vtimer.pulse{animation:none;}.fb-vt-disc{transition:none;}.fb-btn{transition:none;}.fb-slip{animation:none;}
