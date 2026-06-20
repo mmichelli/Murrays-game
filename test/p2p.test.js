@@ -31,8 +31,24 @@ function makeClient(name) {
     else if (m.t === "view") client.view = m.view;
   };
   client.send = (o) => clientSide.send(JSON.stringify(o));
-  client.hello = () => client.send({ t: "hello", name });
+  // A real client carries a stable id (cid) so it reclaims its seat on
+  // reconnect; pass one to exercise that path.
+  client.hello = (cid) => client.send({ t: "hello", name, ...(cid ? { cid } : {}) });
   return client;
+}
+// Re-attach a client to the hub on a fresh channel pair — mirrors a phone
+// that dropped and dialled back in.
+function reattach(hub, client) {
+  const [hostSide, clientSide] = channelPair();
+  client.hostSide = hostSide; client.clientSide = clientSide;
+  clientSide.onmessage = (e) => {
+    const m = JSON.parse(e.data);
+    if (m.t === "welcome") { client.id = m.youId; client.welcomed = true; }
+    else if (m.t === "lobby") client.lobby = m.lobby;
+    else if (m.t === "view") client.view = m.view;
+  };
+  client.send = (o) => clientSide.send(JSON.stringify(o));
+  hub.attach(hostSide);
 }
 
 describe("P2P host hub — connection + lobby protocol", () => {
@@ -147,17 +163,68 @@ describe("P2P host hub — connection + lobby protocol", () => {
     expect(b.lobby.maxTeams).toBeGreaterThanOrEqual(2);
   });
 
-  it("a disconnecting player is removed from the room", async () => {
+  it("a disconnecting player keeps their seat but is marked offline", async () => {
     const a = makeClient("Ann"), b = makeClient("Ben");
     hub.attach(a.hostSide); hub.attach(b.hostSide);
-    a.hello(); b.hello();
+    a.hello("ann-cid"); b.hello("ben-cid");
     await flush();
     expect(hub.getState().players).toHaveLength(2);
 
     a.hostSide.close();
     await flush();
+    // channel is gone, but the player is retained (offline) so the game holds
     expect(hub.channelCount()).toBe(1);
-    expect(hub.getState().players.map((p) => p.name)).toEqual(["Ben"]);
+    expect(hub.getState().players.map((p) => p.name).sort()).toEqual(["Ann", "Ben"]);
+    const ann = hub.getState().players.find((p) => p.name === "Ann");
+    expect(ann.connected).toBe(false);
+    expect(b.lobby.roster.find((p) => p.name === "Ann").connected).toBe(false);
+  });
+
+  it("a phone that drops and dials back in reclaims its exact seat", async () => {
+    const a = makeClient("Ann");
+    hub.attach(a.hostSide);
+    a.hello("ann-cid");
+    await flush();
+    hub.dispatch({ type: "ADD_TEAM" });
+    await flush();
+    const teamId = hub.getState().teams[0].id;
+    a.send({ t: "setTeam", teamId });
+    a.send({ t: "words", words: ["Braai", "Pap"] });
+    await flush();
+    const pid = a.id;
+
+    // drop
+    a.hostSide.close();
+    await flush();
+    expect(hub.getState().players.find((p) => p.id === pid).connected).toBe(false);
+
+    // same device, same cid → same seat, team + words intact, back online
+    reattach(hub, a);
+    a.hello("ann-cid");
+    await flush();
+    expect(a.id).toBe(pid);                                  // same identity
+    expect(hub.getState().players).toHaveLength(1);          // no duplicate
+    expect(hub.channelCount()).toBe(1);
+    const me = hub.getState().players.find((p) => p.id === pid);
+    expect(me.connected).toBe(true);
+    expect(me.teamId).toBe(teamId);                          // group preserved
+    expect(hub.getState().wordCounts[pid]).toBe(2);          // words preserved
+  });
+
+  it("attributes words to the contributor and reports it in the lobby", async () => {
+    const a = makeClient("Ann"), b = makeClient("Ben");
+    hub.attach(a.hostSide); hub.attach(b.hostSide);
+    a.hello("ann-cid"); b.hello("ben-cid");
+    await flush();
+
+    a.send({ t: "words", words: ["Braai", "Pap", "Vetkoek"] });
+    b.send({ t: "words", words: ["Boerewors"] });
+    await flush();
+
+    const roster = Object.fromEntries(b.lobby.roster.map((p) => [p.name, p]));
+    expect(roster.Ann.words).toBe(3);
+    expect(roster.Ben.words).toBe(1);
+    expect(b.lobby.wordsPerPlayer).toBeGreaterThan(0);
   });
 });
 

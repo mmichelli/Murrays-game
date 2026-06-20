@@ -2,6 +2,7 @@ import { describe, it, expect } from "vitest";
 import {
   reducer, initial, viewFor, lobbyFor, encode, decode, shuffle,
   ROUNDS, PALETTE, MIN_WORDS, MAX_TEAMS, TURN_SECONDS, MURRAY_DECK,
+  WORDS_PER_PLAYER, sampleDeck, ICE, peerOptions,
 } from "../src/engine.js";
 
 // Drive the reducer through a list of actions from a starting state.
@@ -31,6 +32,15 @@ describe("deck + constants", () => {
     expect(MURRAY_DECK).toContain("Braai");
     expect(MURRAY_DECK).toContain("Load shedding");
   });
+  it("sampleDeck deals a small unique subset sized to top a player up", () => {
+    expect(sampleDeck()).toHaveLength(WORDS_PER_PLAYER); // defaults to the per-player goal
+    const hand = sampleDeck(3);
+    expect(hand).toHaveLength(3);
+    expect(sampleDeck(0)).toHaveLength(0); // already at target → nothing to deal
+    expect(WORDS_PER_PLAYER).toBeLessThan(MURRAY_DECK.length);
+    expect(new Set(hand).size).toBe(hand.length); // no dupes
+    expect(hand.every((w) => MURRAY_DECK.includes(w))).toBe(true);
+  });
   it("has 5 rounds and a colour per palette slot", () => {
     expect(ROUNDS).toHaveLength(5);
     expect(PALETTE.length).toBeGreaterThanOrEqual(MAX_TEAMS);
@@ -54,6 +64,31 @@ describe("lobby reducer", () => {
       { type: "ADD_WORDS", words: ["Braai", "  biltong ", "BRAAI", "braai"] },
     ]);
     expect(s.bowl).toEqual(["Braai", "biltong"]);
+  });
+
+  it("tallies words per contributor, counting only what's actually added", () => {
+    let s = run(initial, [
+      { type: "ADD_WORDS", words: ["Braai", "Pap"], by: "ann" },
+      { type: "ADD_WORDS", words: ["braai", "Boerewors"], by: "ben" }, // "braai" is a dupe
+      { type: "ADD_WORDS", words: ["Anon"] },                          // no contributor
+    ]);
+    expect(s.wordCounts).toEqual({ ann: 2, ben: 1 });
+    // removing a player forgets their tally (their words stay in the bowl)
+    s = reducer(s, { type: "REMOVE_PLAYER", id: "ann" });
+    expect(s.wordCounts).toEqual({ ben: 1 });
+    expect(s.bowl).toContain("Braai");
+  });
+
+  it("keeps a player's seat on disconnect and restores it on reconnect", () => {
+    let s = run(initial, [
+      { type: "ADD_PLAYER", player: { id: "ann", name: "Ann", teamId: null } },
+    ]);
+    expect(s.players[0].connected).toBe(true);
+    s = reducer(s, { type: "SET_CONNECTED", id: "ann", connected: false });
+    expect(s.players).toHaveLength(1);              // not removed
+    expect(s.players[0].connected).toBe(false);
+    s = reducer(s, { type: "SET_CONNECTED", id: "ann", connected: true });
+    expect(s.players[0].connected).toBe(true);
   });
 
   it("unassigns players when their team is removed", () => {
@@ -121,6 +156,29 @@ describe("game flow", () => {
     expect(g.activeCard).toBe(card); // inherited
     expect(g.activeTeamIdx).not.toBe(s.activeTeamIdx);
     expect(g.turnNumber).toBe(2);
+  });
+
+  it("a catch-up TICK drains real elapsed time after the host's clock stalls", () => {
+    const { s } = startedGame();
+    const up = s.teams[s.activeTeamIdx];
+    const giver = s.players.find((p) => p.teamId === up.id);
+    let g = reducer(s, { type: "CLAIM_AND_BEGIN", fromId: giver.id });
+    expect(g.timeLeft).toBe(TURN_SECONDS);
+
+    // phone resumes after ~25s asleep → one tick swallows the whole gap
+    g = reducer(g, { type: "TICK", seconds: 25 });
+    expect(g.timeLeft).toBe(TURN_SECONDS - 25);
+
+    // a default tick is still a single second (back-compat)
+    g = reducer(g, { type: "TICK" });
+    expect(g.timeLeft).toBe(TURN_SECONDS - 26);
+
+    // a gap larger than the remaining time ends the turn, keeping the card
+    const card = g.activeCard;
+    g = reducer(g, { type: "TICK", seconds: 999 });
+    expect(g.phase).toBe("ready");
+    expect(g.running).toBe(false);
+    expect(g.activeCard).toBe(card);
   });
 
   it("clearing the bowl advances the round, and round 5 ends the game", () => {
@@ -197,7 +255,7 @@ describe("lobbyFor", () => {
     expect(lobby.bowlCount).toBe(2);
     expect(lobby.youId).toBe("p1");
     expect(lobby.started).toBe(false);
-    expect(lobby.roster).toEqual([{ id: "p1", name: "Ann", teamId: s.teams[0].id, isHost: false }]);
+    expect(lobby.roster).toEqual([{ id: "p1", name: "Ann", teamId: s.teams[0].id, isHost: false, connected: true, words: 0 }]);
     expect(lobby.teams[0].color).toBe(PALETTE[0]);
     expect(lobby.teams[0].count).toBe(1); // Ann is in the first group
     expect(lobby.teams[1].count).toBe(0);
@@ -223,5 +281,33 @@ describe("shuffle", () => {
     expect(out).toHaveLength(50);
     expect([...out].sort((a, b) => a - b)).toEqual(src);
     expect(src).toEqual(Array.from({ length: 50 }, (_, i) => i)); // original untouched
+  });
+});
+
+describe("peer / ICE config", () => {
+  it("offers both STUN and a TURN relay so cross-network phones can connect", () => {
+    const urls = ICE.map((s) => s.urls);
+    expect(urls.some((u) => u.startsWith("stun:"))).toBe(true);
+    expect(urls.some((u) => u.startsWith("turn:"))).toBe(true);
+    // every TURN entry must carry credentials or the browser rejects it
+    ICE.filter((s) => s.urls.startsWith("turn:")).forEach((s) => {
+      expect(s.username).toBeTruthy();
+      expect(s.credential).toBeTruthy();
+    });
+  });
+  it("peerOptions actually hands the ICE servers to PeerJS", () => {
+    const opts = peerOptions();
+    expect(opts.config.iceServers).toBe(ICE);          // wired through, not dropped
+    expect(peerOptions({ debug: 3 }).debug).toBe(3);   // overridable
+  });
+  it("a runtime override (e.g. a dedicated TURN) replaces the free defaults", () => {
+    const custom = [{ urls: "turn:my.turn:3478", username: "u", credential: "p" }];
+    globalThis.MRYSG_ICE = custom;
+    try {
+      expect(peerOptions().config.iceServers).toBe(custom);
+    } finally {
+      delete globalThis.MRYSG_ICE;
+    }
+    expect(peerOptions().config.iceServers).toBe(ICE); // falls back once cleared
   });
 });

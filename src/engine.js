@@ -22,6 +22,10 @@ export const ROUNDS = [
 ];
 export const PALETTE = ["#2C6EE6", "#E8348B", "#1AA67E", "#7A4DE0", "#FF6A3D", "#0E8C9B"];
 export const MIN_WORDS = 4, MAX_TEAMS = 6, TURN_SECONDS = 60;
+// Soft per-player target: everyone aims to drop this many words in the bowl.
+// It's a goal with progress, not a hard gate — the host can start whenever
+// there are enough words to actually play.
+export const WORDS_PER_PLAYER = 4;
 
 // Murray's deck — South African student / varsity culture. Lekker, actable
 // across all five rounds, and recognizable to anyone who's survived res,
@@ -78,10 +82,33 @@ export const MURRAY_DECK = [
   "Takealot", "Capitec", "Vodacom", "MTN",
 ];
 
-export const ICE = [{ urls: "stun:stun.l.google.com:19302" }];
+// ICE servers handed to WebRTC. STUN alone only works when at least one peer
+// is directly reachable — between two phones on mobile data or behind
+// symmetric NATs it silently fails. The TURN relays let the data channel fall
+// back to relaying, which is what makes real phone-to-phone games connect.
+export const ICE = [
+  { urls: "stun:stun.l.google.com:19302" },
+  { urls: "stun:stun1.l.google.com:19302" },
+  { urls: "turn:openrelay.metered.ca:80", username: "openrelayproject", credential: "openrelayproject" },
+  { urls: "turn:openrelay.metered.ca:443", username: "openrelayproject", credential: "openrelayproject" },
+  { urls: "turn:openrelay.metered.ca:443?transport=tcp", username: "openrelayproject", credential: "openrelayproject" },
+];
+// Resolve the ICE servers to use. A page can set `globalThis.MRYSG_ICE` to a
+// list of RTCIceServers (e.g. a dedicated TURN credential) to override the
+// free defaults at runtime — no rebuild or redeploy needed.
+export function resolveIce() {
+  const o = typeof globalThis !== "undefined" ? globalThis.MRYSG_ICE : null;
+  return Array.isArray(o) && o.length ? o : ICE;
+}
+// Single source of truth for how we open a PeerJS peer — every `new Peer`
+// MUST go through this so the ICE servers above actually get used.
+export const peerOptions = (extra = {}) => ({ debug: 1, config: { iceServers: resolveIce() }, ...extra });
 
 export const uid = () => Math.random().toString(36).slice(2, 8);
 export const shuffle = (a0) => { const a = [...a0]; for (let i = a.length - 1; i > 0; i--) { const j = (Math.random() * (i + 1)) | 0;[a[i], a[j]] = [a[j], a[i]]; } return a; };
+// Deal a fresh, random handful from Murray's deck — used to top a player up
+// to their target rather than dumping all ~225 words into the bowl at once.
+export const sampleDeck = (n = WORDS_PER_PLAYER) => shuffle(MURRAY_DECK).slice(0, Math.max(0, n));
 const zeros = (teams) => Object.fromEntries(teams.map((t) => [t.id, [0, 0, 0, 0, 0]]));
 
 // Signaling helpers. We pass plain RTCSessionDescriptionInit objects
@@ -108,7 +135,7 @@ function resolveDeckEmpty(s) {
 }
 
 export const initial = {
-  phase: "lobby", teams: [], players: [], bowl: [],
+  phase: "lobby", teams: [], players: [], bowl: [], wordCounts: {},
   deck: [], discard: [], activeCard: null,
   currentRound: 1, activeTeamIdx: 0, activePlayerId: null,
   timeLeft: TURN_SECONDS, running: false, scores: {}, turnNumber: 1, lastCompleted: 0,
@@ -123,14 +150,25 @@ export function reducer(state, a) {
           players: state.players.map((p) => p.teamId === a.id ? { ...p, teamId: null } : p) };
     case "RENAME_TEAM": return { ...state, teams: state.teams.map((t) => t.id === a.id ? { ...t, name: a.name } : t) };
     case "ADD_PLAYER": return state.players.some((p) => p.id === a.player.id) ? state
-      : { ...state, players: [...state.players, a.player] };
-    case "REMOVE_PLAYER": return { ...state, players: state.players.filter((p) => p.id !== a.id) };
+      : { ...state, players: [...state.players, { connected: true, ...a.player }] };
+    case "REMOVE_PLAYER": {
+      const { [a.id]: _gone, ...wordCounts } = state.wordCounts;
+      return { ...state, players: state.players.filter((p) => p.id !== a.id), wordCounts };
+    }
+    // A dropped phone keeps its seat (team, score, words) so a quick
+    // backgrounding or signal blip never unravels the game. We only flip a
+    // flag; the React host prunes long-gone lobby ghosts on a grace timer.
+    case "SET_CONNECTED": return { ...state, players: state.players.map((p) => p.id === a.id ? { ...p, connected: a.connected } : p) };
     case "SET_TEAM": return { ...state, players: state.players.map((p) => p.id === a.id ? { ...p, teamId: a.teamId } : p) };
     case "ADD_WORDS": {
       const have = new Set(state.bowl.map((w) => w.toLowerCase()));
       const add = [];
       for (const w0 of a.words) { const w = w0.trim(); if (w && !have.has(w.toLowerCase())) { have.add(w.toLowerCase()); add.push(w); } }
-      return add.length ? { ...state, bowl: [...state.bowl, ...add] } : state;
+      if (!add.length) return state;
+      const wordCounts = a.by
+        ? { ...state.wordCounts, [a.by]: (state.wordCounts[a.by] || 0) + add.length }
+        : state.wordCounts;
+      return { ...state, bowl: [...state.bowl, ...add], wordCounts };
     }
 
     case "START_GAME": {
@@ -161,7 +199,10 @@ export function reducer(state, a) {
 
     case "TICK": {
       if (!state.running) return state;
-      const t = state.timeLeft - 1;
+      // `seconds` lets the host reconcile against the wall clock — if its
+      // phone throttled or paused timers (screen lock, backgrounding), one
+      // catch-up TICK drains the real elapsed time instead of a single second.
+      const t = state.timeLeft - Math.max(1, Math.floor(a.seconds || 1));
       if (t > 0) return { ...state, timeLeft: t };
       return advanceTurn({ ...state, timeLeft: 0 }, true);
     }
@@ -209,8 +250,11 @@ export const lobbyFor = (s, pid) => ({
     count: s.players.filter((p) => p.teamId === t.id).length,
   })),
   bowlCount: s.bowl.length, started: s.phase !== "lobby", youId: pid,
-  maxTeams: MAX_TEAMS, minWords: MIN_WORDS,
-  roster: s.players.map((p) => ({ id: p.id, name: p.name, teamId: p.teamId, isHost: !!p.isHost })),
+  maxTeams: MAX_TEAMS, minWords: MIN_WORDS, wordsPerPlayer: WORDS_PER_PLAYER,
+  roster: s.players.map((p) => ({
+    id: p.id, name: p.name, teamId: p.teamId, isHost: !!p.isHost,
+    connected: p.connected !== false, words: s.wordCounts[p.id] || 0,
+  })),
 });
 
 /* ------------------------ P2P host hub ---------------------------- *
@@ -225,15 +269,11 @@ export function createHostHub({ onState } = {}) {
   const channels = new Map(); // pid -> channel
 
   const send = (ch, obj) => { if (ch && ch.readyState === "open") { try { ch.send(JSON.stringify(obj)); } catch {} } };
+  const snapshotFor = (pid) => state.phase === "lobby"
+    ? { t: "lobby", lobby: lobbyFor(state, pid) }
+    : { t: "view", view: viewFor(state, pid) };
 
-  function broadcast() {
-    channels.forEach((ch, pid) => {
-      const msg = state.phase === "lobby"
-        ? { t: "lobby", lobby: lobbyFor(state, pid) }
-        : { t: "view", view: viewFor(state, pid) };
-      send(ch, msg);
-    });
-  }
+  function broadcast() { channels.forEach((ch, pid) => send(ch, snapshotFor(pid))); }
 
   function dispatch(action) {
     const next = reducer(state, action);
@@ -246,10 +286,16 @@ export function createHostHub({ onState } = {}) {
 
   function handle(ch, m) {
     if (m.t === "hello") {
-      const pid = uid();
+      // The client owns a stable id (cid) that survives reconnects, so a
+      // phone that drops and comes back reclaims its exact seat instead of
+      // joining as a fresh stranger. Fall back to a minted id for old clients.
+      const pid = (typeof m.cid === "string" && m.cid) ? m.cid : uid();
+      const existing = state.players.find((p) => p.id === pid);
       channels.set(pid, ch); ch._pid = pid;
       send(ch, { t: "welcome", youId: pid });
-      dispatch({ type: "ADD_PLAYER", player: { id: pid, name: m.name || "Player", teamId: null } });
+      if (existing) dispatch({ type: "SET_CONNECTED", id: pid, connected: true });
+      else dispatch({ type: "ADD_PLAYER", player: { id: pid, name: m.name || "Player", teamId: null } });
+      send(ch, snapshotFor(pid)); // resume them even if the dispatch was a no-op
     } else if (m.t === "setTeam" && ch._pid) {
       dispatch({ type: "SET_TEAM", id: ch._pid, teamId: m.teamId });
     } else if (m.t === "addTeam" && ch._pid) {
@@ -257,7 +303,7 @@ export function createHostHub({ onState } = {}) {
     } else if (m.t === "renameTeam" && ch._pid) {
       dispatch({ type: "RENAME_TEAM", id: m.id, name: (m.name || "").slice(0, 16) });
     } else if (m.t === "words" && ch._pid) {
-      dispatch({ type: "ADD_WORDS", words: m.words || [] });
+      dispatch({ type: "ADD_WORDS", words: m.words || [], by: ch._pid });
     } else if (m.t === "intent" && ch._pid) {
       dispatch({ type: m.action, fromId: ch._pid });
     }
@@ -267,7 +313,13 @@ export function createHostHub({ onState } = {}) {
   function attach(ch) {
     ch.onmessage = (e) => { try { handle(ch, JSON.parse(e.data)); } catch {} };
     ch.onclose = () => {
-      if (ch._pid) { const pid = ch._pid; channels.delete(pid); dispatch({ type: "REMOVE_PLAYER", id: pid }); }
+      // Only react if this is still the live channel for the seat — a
+      // reconnect swaps in a new channel, and we don't want the old one's
+      // late close to knock the player back offline.
+      if (ch._pid && channels.get(ch._pid) === ch) {
+        channels.delete(ch._pid);
+        dispatch({ type: "SET_CONNECTED", id: ch._pid, connected: false });
+      }
     };
     return ch;
   }
