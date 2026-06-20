@@ -197,8 +197,11 @@ describe("lobbyFor", () => {
     expect(lobby.bowlCount).toBe(2);
     expect(lobby.youId).toBe("p1");
     expect(lobby.started).toBe(false);
-    expect(lobby.roster).toEqual([{ name: "Ann", teamId: s.teams[0].id }]);
+    expect(lobby.roster).toEqual([{ id: "p1", name: "Ann", teamId: s.teams[0].id, isHost: false }]);
     expect(lobby.teams[0].color).toBe(PALETTE[0]);
+    expect(lobby.teams[0].count).toBe(1); // Ann is in the first group
+    expect(lobby.teams[1].count).toBe(0);
+    expect(lobby.maxTeams).toBe(MAX_TEAMS);
   });
 });
 

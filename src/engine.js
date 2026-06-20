@@ -171,9 +171,13 @@ export function viewFor(s, pid) {
   };
 }
 export const lobbyFor = (s, pid) => ({
-  teams: s.teams.map((t, i) => ({ id: t.id, name: t.name, color: PALETTE[i % PALETTE.length] })),
+  teams: s.teams.map((t, i) => ({
+    id: t.id, name: t.name, color: PALETTE[i % PALETTE.length],
+    count: s.players.filter((p) => p.teamId === t.id).length,
+  })),
   bowlCount: s.bowl.length, started: s.phase !== "lobby", youId: pid,
-  roster: s.players.map((p) => ({ name: p.name, teamId: p.teamId })),
+  maxTeams: MAX_TEAMS, minWords: MIN_WORDS,
+  roster: s.players.map((p) => ({ id: p.id, name: p.name, teamId: p.teamId, isHost: !!p.isHost })),
 });
 
 /* ------------------------ P2P host hub ---------------------------- *
@@ -215,6 +219,10 @@ export function createHostHub({ onState } = {}) {
       dispatch({ type: "ADD_PLAYER", player: { id: pid, name: m.name || "Player", teamId: null } });
     } else if (m.t === "setTeam" && ch._pid) {
       dispatch({ type: "SET_TEAM", id: ch._pid, teamId: m.teamId });
+    } else if (m.t === "addTeam" && ch._pid) {
+      dispatch({ type: "ADD_TEAM" });
+    } else if (m.t === "renameTeam" && ch._pid) {
+      dispatch({ type: "RENAME_TEAM", id: m.id, name: (m.name || "").slice(0, 16) });
     } else if (m.t === "words" && ch._pid) {
       dispatch({ type: "ADD_WORDS", words: m.words || [] });
     } else if (m.t === "intent" && ch._pid) {
