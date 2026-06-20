@@ -1157,9 +1157,6 @@ const CSS = `
 /* landing hero - a bold solid accent band, brand oversized on top */
 .fb-hero{position:relative;background:var(--accent);border:3px solid var(--ink);border-radius:8px;box-shadow:8px 8px 0 var(--ink);
   padding:22px 18px 24px;margin:2px 2px 22px;text-align:center;display:flex;flex-direction:column;align-items:center;gap:12px;overflow:hidden;}
-/* faint mega-digits stamped behind the brand for texture */
-.fb-hero::before{content:"12345";position:absolute;inset:0;display:flex;align-items:center;justify-content:center;
-  font-family:Anton,sans-serif;font-size:170px;letter-spacing:.06em;color:rgba(255,255,255,.10);pointer-events:none;white-space:nowrap;}
 .fb-hero>*{position:relative;z-index:1;}
 .fb-herobrand{font-family:Anton,'Arial Narrow',sans-serif;font-weight:400;font-size:clamp(46px,15.5vw,82px);line-height:.84;margin:0;
   color:var(--paper);text-transform:uppercase;letter-spacing:.015em;text-shadow:4px 4px 0 var(--ink);}
