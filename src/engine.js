@@ -244,7 +244,7 @@ export function viewFor(s, pid) {
   const myTeamUp = me && up && me.teamId === up.id;
   return {
     phase: s.phase, round: r && { ...r }, teams: s.teams,
-    teamUpName: up?.name, teamUpColor: up?.color,
+    teamUpId: up?.id, teamUpName: up?.name, teamUpColor: up?.color,
     activeName: s.players.find((p) => p.id === s.activePlayerId)?.name || "",
     timeLeft: s.timeLeft, running: s.running, scores: s.scores, turnNumber: s.turnNumber,
     myTeamId: me?.teamId, isActive,

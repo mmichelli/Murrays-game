@@ -613,23 +613,36 @@ const Rules = ({ r, tight }) => (
     <span><b>Allowed</b> {r.allowed}</span><span><b>Never</b> {r.restrict}</span>
   </div>
 );
+// A persistent "this is your team" marker so a player always knows which
+// side they're on, separate from whichever team is currently up.
+const YouBadge = ({ team }) => team ? (
+  <div className="fb-youbadge" style={{ "--tc": team.color }}>
+    <span className="fb-dot" /> You're on <b>{team.name}</b>
+  </div>
+) : null;
 function Ready({ v, onIntent }) {
   const r = v.round;
+  const myTeam = v.teams.find((t) => t.id === v.myTeamId);
+  const mineUp = !!v.myTeamId && v.myTeamId === v.teamUpId;
   return (
     <div className="fb-card fb-stack fb-center" style={{ "--tc": v.teamUpColor }}>
       {v.turnNumber > 1 && <div className="fb-flash">⏰ Time! {v.teamUpName} is up next.</div>}
       <RoundLine r={r} />
+      <div className="fb-uplabel">{mineUp ? "Your team's turn" : "Now up to give clues"}</div>
       <FitText className="fb-h1 fb-xl" style={{ color: v.teamUpColor }} text={v.teamUpName} min={20} />
       {v.canClaim ? (<>
         <p className="fb-muted">{r.setup}</p>
         {v.inherited && <p className="fb-inherit">You'd inherit one un-guessed card.</p>}
         <Rules r={r} />
         <button className="fb-btn fb-big" onClick={() => onIntent("CLAIM_AND_BEGIN")}>I'll give clues · {TURN_SECONDS}s</button>
-      </>) : v.myTeamId && v.teamUpName ? (
-        <p className="fb-muted">Your team's up. Someone tap “I'll give clues” on their phone.</p>
+      </>) : mineUp ? (
+        <p className="fb-muted">Your team's up — someone tap “I'll give clues” on their phone.</p>
+      ) : myTeam ? (
+        <p className="fb-muted">It's <b style={{ color: v.teamUpColor }}>{v.teamUpName}</b>'s turn to give clues. Sit tight — your turn comes around.</p>
       ) : (
         <p className="fb-muted">Waiting for {v.teamUpName} to start their turn. Watch the room.</p>
       )}
+      <YouBadge team={myTeam} />
       <Standings v={v} />
     </div>
   );
@@ -722,13 +735,14 @@ function WordSlip({ word }) {
 }
 function Play({ v, onIntent, optimistic }) {
   const r = v.round;
+  const myTeam = v.teams.find((t) => t.id === v.myTeamId);
   const { shown, canBuffer, bump } = useGiverWord(v, optimistic);
   const onCorrect = () => { onIntent("CORRECT"); if (optimistic && canBuffer) bump(); };
   return (
     <div className="fb-card fb-stack">
       <div className="fb-hud">
         <RoundLine r={r} />
-        <span className="fb-turn" style={{ color: v.teamUpColor }}>● {v.activeName}</span>
+        <span className="fb-turn" style={{ color: v.teamUpColor }}>● {v.teamUpName} up · {v.activeName}</span>
       </div>
       <VisualTimer timeLeft={v.timeLeft} total={TURN_SECONDS} />
       {v.isActive ? (<>
@@ -742,6 +756,7 @@ function Play({ v, onIntent, optimistic }) {
           <p className="fb-tiny">Guess out loud. The word stays on their phone.</p>
         </div>
       )}
+      <YouBadge team={myTeam} />
       <Standings v={v} />
     </div>
   );
@@ -786,7 +801,19 @@ function Endgame({ v }) {
 }
 function Standings({ v }) {
   const total = (id) => v.scores[id].reduce((a, b) => a + b, 0);
-  return <div className="fb-standings">{v.teams.map((t) => <span key={t.id} style={{ color: t.color }}>{t.name} <b>{total(t.id)}</b></span>)}</div>;
+  return (
+    <div className="fb-standings">
+      {v.teams.map((t) => {
+        const up = t.id === v.teamUpId, mine = t.id === v.myTeamId;
+        return (
+          <span key={t.id} className={`fb-stand ${up ? "up" : ""}`} style={{ color: t.color }}>
+            {up && <span className="fb-standup" aria-label="up now">▶</span>}
+            {t.name}{mine && <span className="fb-standyou"> (you)</span>} <b>{total(t.id)}</b>
+          </span>
+        );
+      })}
+    </div>
+  );
 }
 
 /* --------------------------- small parts -------------------------- */
@@ -1098,6 +1125,16 @@ const CSS = `
 
 .fb-standings{display:flex;flex-wrap:wrap;gap:14px;justify-content:center;width:100%;box-sizing:border-box;color:var(--muted);font-size:13px;background:rgba(20,26,34,.035);border-radius:8px;padding:11px 12px;margin-top:4px;font-family:'Space Mono',monospace;}
 .fb-standings b{font-family:Anton,sans-serif;font-weight:400;font-size:18px;vertical-align:-2px;}
+.fb-stand{display:inline-flex;align-items:center;gap:4px;}
+.fb-stand.up{font-weight:700;}
+.fb-standup{font-size:10px;}
+.fb-standyou{opacity:.7;}
+/* whose turn it is — an eyebrow above the big team name */
+.fb-uplabel{font-family:'Space Mono',monospace;font-weight:700;font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:var(--muted);margin-bottom:-6px;}
+/* which side you're on — a persistent, colour-coded marker */
+.fb-youbadge{display:inline-flex;align-items:center;gap:7px;align-self:center;font-family:'Space Mono',monospace;font-size:12px;
+  color:var(--muted);background:#fff;border:1.5px solid var(--line);border-left:4px solid var(--tc);border-radius:999px;padding:5px 12px;}
+.fb-youbadge b{color:var(--tc);font-weight:700;}
 
 .fb-modal{position:fixed;inset:0;background:rgba(34,28,18,.55);backdrop-filter:blur(3px);display:flex;align-items:center;justify-content:center;padding:18px;z-index:50;}
 .fb-modal .fb-card{max-width:500px;width:100%;border:2px solid var(--ink);}
