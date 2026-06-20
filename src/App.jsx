@@ -1,6 +1,6 @@
 import React, { useReducer, useEffect, useState, useRef, useMemo, useCallback } from "react";
 import {
-  ROUNDS, PALETTE, MIN_WORDS, MAX_TEAMS, TURN_SECONDS, MURRAY_DECK,
+  ROUNDS, PALETTE, MIN_WORDS, MAX_TEAMS, TURN_SECONDS, DECK_SAMPLE_SIZE, sampleDeck,
   uid, initial, viewFor, createHostHub,
 } from "./engine.js";
 
@@ -228,8 +228,8 @@ function HostLobby({ state, dispatch, hostId, roomCode, peerStatus, onExit }) {
           <h2 className="fb-h2">The bowl</h2>
           <p className="fb-muted"><b className="fb-num">{state.bowl.length}</b> in the bowl — everyone adds at once. Need {MIN_WORDS}+ to start.</p>
           <WordAdder onAdd={(ws) => dispatch({ type: "ADD_WORDS", words: ws })} />
-          <button className="fb-btn fb-ghost" onClick={() => dispatch({ type: "ADD_WORDS", words: MURRAY_DECK })}>
-            🇿🇦 Load Murray's deck — {MURRAY_DECK.length} words
+          <button className="fb-btn fb-ghost" onClick={() => dispatch({ type: "ADD_WORDS", words: sampleDeck() })}>
+            🇿🇦 Deal {DECK_SAMPLE_SIZE} from Murray's deck
           </button>
         </div>
       )}

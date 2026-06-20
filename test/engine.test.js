@@ -2,6 +2,7 @@ import { describe, it, expect } from "vitest";
 import {
   reducer, initial, viewFor, lobbyFor, encode, decode, shuffle,
   ROUNDS, PALETTE, MIN_WORDS, MAX_TEAMS, TURN_SECONDS, MURRAY_DECK,
+  DECK_SAMPLE_SIZE, sampleDeck,
 } from "../src/engine.js";
 
 // Drive the reducer through a list of actions from a starting state.
@@ -30,6 +31,13 @@ describe("deck + constants", () => {
     expect(new Set(lower).size).toBe(MURRAY_DECK.length); // no dupes
     expect(MURRAY_DECK).toContain("Braai");
     expect(MURRAY_DECK).toContain("Load shedding");
+  });
+  it("sampleDeck deals a small unique subset, not the whole deck", () => {
+    const hand = sampleDeck();
+    expect(hand).toHaveLength(DECK_SAMPLE_SIZE);
+    expect(DECK_SAMPLE_SIZE).toBeLessThan(MURRAY_DECK.length);
+    expect(new Set(hand).size).toBe(hand.length); // no dupes
+    expect(hand.every((w) => MURRAY_DECK.includes(w))).toBe(true);
   });
   it("has 5 rounds and a colour per palette slot", () => {
     expect(ROUNDS).toHaveLength(5);

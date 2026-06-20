@@ -82,6 +82,10 @@ export const ICE = [{ urls: "stun:stun.l.google.com:19302" }];
 
 export const uid = () => Math.random().toString(36).slice(2, 8);
 export const shuffle = (a0) => { const a = [...a0]; for (let i = a.length - 1; i > 0; i--) { const j = (Math.random() * (i + 1)) | 0;[a[i], a[j]] = [a[j], a[i]]; } return a; };
+// Deal a fresh, random handful from Murray's deck rather than dumping all
+// ~225 words into the bowl at once.
+export const DECK_SAMPLE_SIZE = 15;
+export const sampleDeck = (n = DECK_SAMPLE_SIZE) => shuffle(MURRAY_DECK).slice(0, n);
 const zeros = (teams) => Object.fromEntries(teams.map((t) => [t.id, [0, 0, 0, 0, 0]]));
 
 // Signaling helpers. We pass plain RTCSessionDescriptionInit objects
