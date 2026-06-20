@@ -532,7 +532,7 @@ function Ready({ v, onIntent }) {
     <div className="fb-card fb-stack fb-center" style={{ "--tc": v.teamUpColor }}>
       {v.turnNumber > 1 && <div className="fb-flash">⏰ Time! {v.teamUpName} is up next.</div>}
       <RoundLine r={r} />
-      <h1 className="fb-h1 fb-xl" style={{ color: v.teamUpColor }}>{v.teamUpName}</h1>
+      <FitText className="fb-h1 fb-xl" style={{ color: v.teamUpColor }} text={v.teamUpName} min={20} />
       {v.canClaim ? (<>
         <p className="fb-muted">{r.setup}</p>
         {v.inherited && <p className="fb-inherit">You'd inherit one un-guessed card.</p>}
@@ -570,6 +570,45 @@ function VisualTimer({ timeLeft, total }) {
     </div>
   );
 }
+// Shrink an element's font-size until its text fits `avail` px on one line
+// (down to `min`); below that, let it wrap rather than bleed off the page.
+// Shared by the word slip and the big team-name heading.
+const padX = (e) => { const s = getComputedStyle(e); return parseFloat(s.paddingLeft) + parseFloat(s.paddingRight); };
+function fitOneLine(el, avail, max, min) {
+  if (!el || avail <= 0) return;
+  el.style.whiteSpace = "nowrap";
+  el.style.wordBreak = "normal";
+  el.style.fontSize = max + "px";
+  const natural = el.scrollWidth;
+  const next = natural > avail ? Math.max(min, Math.floor((max * avail) / natural)) : max;
+  el.style.fontSize = next + "px";
+  if (next <= min && el.scrollWidth > avail) { el.style.whiteSpace = "normal"; el.style.wordBreak = "break-word"; }
+}
+// Run a fit now, then again once the Anton display font is actually applied
+// (fonts.ready can resolve before a CSS @import-ed face loads) and after a
+// short beat as a fallback. Returns a cleanup to cancel the pending timer.
+function fitWithFont(fit) {
+  fit();
+  try { document.fonts.load("400 1em 'Anton'").then(fit, () => {}); } catch {}
+  try { document.fonts.ready.then(fit, () => {}); } catch {}
+  const t = setTimeout(fit, 350);
+  return () => clearTimeout(t);
+}
+// A big heading that auto-sizes to fit its card on one line, so long team
+// names ("SPRINGBOKKE") shrink to stay whole instead of overflowing.
+function FitText({ text, className, style, max = 58, min = 24 }) {
+  const ref = useRef(null);
+  useLayoutEffect(() => {
+    const el = ref.current, parent = el?.parentElement;
+    if (!el || !parent) return;
+    const fit = () => fitOneLine(el, parent.clientWidth - padX(parent) - 2, max, min);
+    const ro = new ResizeObserver(fit);
+    ro.observe(parent);
+    const cancel = fitWithFont(fit);
+    return () => { ro.disconnect(); cancel(); };
+  }, [text, max, min]);
+  return <h1 ref={ref} className={className} style={style}>{text}</h1>;
+}
 // The torn-paper word slip. The word is auto-sized to be as big as will
 // fit on one line, so long entries ("loadshedding") shrink to stay whole
 // instead of breaking ugly mid-word; only past the minimum size do we let
@@ -581,25 +620,12 @@ function WordSlip({ word }) {
   useLayoutEffect(() => {
     const slip = slipRef.current, el = wordRef.current, card = slip?.parentElement;
     if (!slip || !el || !card) return;
-    const fit = () => {
-      const px = (e, a, b) => { const s = getComputedStyle(e); return parseFloat(s[a]) + parseFloat(s[b]); };
-      // leave headroom for the slip's slight rotation and the ink ghost's
-      // 3px offset so big words never bleed off the paper's edge.
-      const avail = card.clientWidth - px(card, "paddingLeft", "paddingRight") - px(slip, "paddingLeft", "paddingRight") - 18;
-      if (avail <= 0) return;
-      el.style.whiteSpace = "nowrap";
-      el.style.wordBreak = "normal";
-      el.style.fontSize = WORD_MAX + "px";
-      const natural = el.scrollWidth;
-      const next = natural > avail ? Math.max(WORD_MIN, Math.floor((WORD_MAX * avail) / natural)) : WORD_MAX;
-      el.style.fontSize = next + "px";
-      if (next <= WORD_MIN && el.scrollWidth > avail) { el.style.whiteSpace = "normal"; el.style.wordBreak = "break-word"; }
-    };
-    fit();
+    // headroom for the slip's slight rotation and the ink ghost's 3px offset.
+    const fit = () => fitOneLine(el, card.clientWidth - padX(card) - padX(slip) - 18, WORD_MAX, WORD_MIN);
     const ro = new ResizeObserver(fit);
     ro.observe(card);
-    document.fonts?.ready?.then(fit).catch(() => {});
-    return () => ro.disconnect();
+    const cancel = fitWithFont(fit);
+    return () => { ro.disconnect(); cancel(); };
   }, [word]);
   return (
     <div className="fb-slip" ref={slipRef} key={word}>
@@ -653,7 +679,7 @@ function Endgame({ v }) {
   const top = total(ranked[0].id), winners = ranked.filter((t) => total(t.id) === top);
   return (
     <div className="fb-card fb-stack">
-      <h1 className="fb-h1 fb-xl" style={{ color: winners[0].color }}>{winners.length > 1 ? "It's a tie!" : `${winners[0].name} wins!`}</h1>
+      <FitText className="fb-h1 fb-xl" style={{ color: winners[0].color }} text={winners.length > 1 ? "It's a tie!" : `${winners[0].name} wins!`} min={20} />
       {ranked.map((t, i) => (
         <div className="fb-rankrow" key={t.id} style={{ "--tc": t.color }}>
           <span className="fb-rank">{i + 1}</span><span className="fb-dot" />
