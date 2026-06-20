@@ -606,7 +606,7 @@ const RoundDots = ({ n }) => (
   <span className="fb-dots" aria-hidden="true">{[1, 2, 3, 4, 5].map((i) => <span key={i} className={`fb-pip ${i <= n ? "on" : ""}`} />)}</span>
 );
 const RoundLine = ({ r }) => (
-  <div className="fb-roundline"><span className="fb-roundtag">{r.icon} R{r.n} · {r.name}</span><RoundDots n={r.n} /></div>
+  <div className="fb-roundline"><span className="fb-roundtag">{r.icon} {r.name}</span><RoundDots n={r.n} /></div>
 );
 const Rules = ({ r, tight }) => (
   <div className={`fb-rules ${tight ? "tight" : ""}`}>
@@ -740,10 +740,7 @@ function Play({ v, onIntent, optimistic }) {
   const onCorrect = () => { onIntent("CORRECT"); if (optimistic && canBuffer) bump(); };
   return (
     <div className="fb-card fb-stack">
-      <div className="fb-hud">
-        <RoundLine r={r} />
-        <span className="fb-turn" style={{ color: v.teamUpColor }}>● {v.activeName}</span>
-      </div>
+      <RoundLine r={r} />
       <VisualTimer timeLeft={v.timeLeft} total={TURN_SECONDS} />
       {v.isActive ? (<>
         <WordSlip word={shown} />
@@ -803,15 +800,9 @@ function Standings({ v }) {
   const total = (id) => v.scores[id].reduce((a, b) => a + b, 0);
   return (
     <div className="fb-standings">
-      {v.teams.map((t) => {
-        const up = t.id === v.teamUpId, mine = t.id === v.myTeamId;
-        return (
-          <span key={t.id} className={`fb-stand ${up ? "up" : ""}`} style={{ color: t.color }}>
-            {up && <span className="fb-standup" aria-label="up now">▶</span>}
-            {t.name}{mine && <span className="fb-standyou"> (you)</span>} <b>{total(t.id)}</b>
-          </span>
-        );
-      })}
+      {v.teams.map((t) => (
+        <span key={t.id} className="fb-stand" style={{ color: t.color }}>{t.name} <b>{total(t.id)}</b></span>
+      ))}
     </div>
   );
 }
@@ -1071,8 +1062,6 @@ const CSS = `
 .fb-dots{display:inline-flex;gap:5px;}
 .fb-pip{width:8px;height:8px;border-radius:50%;border:1.6px solid var(--accent);box-sizing:border-box;}
 .fb-pip.on{background:var(--accent);}
-.fb-hud{display:flex;justify-content:space-between;align-items:flex-start;gap:10px;}
-.fb-turn{font-family:'Space Mono',monospace;font-weight:700;font-size:13px;white-space:nowrap;}
 
 /* Time Timer-style disc — a depleting wedge on a clock face. */
 @property --fbdeg{syntax:'<angle>';inherits:false;initial-value:360deg;}
@@ -1126,9 +1115,6 @@ const CSS = `
 .fb-standings{display:flex;flex-wrap:wrap;gap:14px;justify-content:center;width:100%;box-sizing:border-box;color:var(--muted);font-size:13px;background:rgba(20,26,34,.035);border-radius:8px;padding:11px 12px;margin-top:4px;font-family:'Space Mono',monospace;}
 .fb-standings b{font-family:Anton,sans-serif;font-weight:400;font-size:18px;vertical-align:-2px;}
 .fb-stand{display:inline-flex;align-items:center;gap:4px;}
-.fb-stand.up{font-weight:700;}
-.fb-standup{font-size:10px;}
-.fb-standyou{opacity:.7;}
 /* whose turn it is — an eyebrow above the big team name */
 .fb-uplabel{font-family:'Space Mono',monospace;font-weight:700;font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:var(--muted);margin-bottom:-6px;}
 /* which side you're on — a persistent, colour-coded marker */
