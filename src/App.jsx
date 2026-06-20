@@ -72,6 +72,35 @@ function useFollowTeamAccent(color) {
   useEffect(() => { setAccent(color || BRAND_ACCENT); return () => setAccent(BRAND_ACCENT); }, [color, setAccent]);
 }
 
+/* ---------------------- pixel-art round icons --------------------- *
+ * Each round's emoji redrawn as a chunky single-colour pixel sprite, so
+ * the icons match the game's crisp brutalist look and render identically
+ * on every device (system emoji vary wildly). '#' is a filled pixel; the
+ * glyph inherits the surrounding text colour via currentColor.
+ *   1 Describe  - theatre mask     2 Charades - running figure
+ *   3 One Word  - speech bubble    4 Hands Only - open hand
+ *   5 Face Only - face, one raised brow
+ * ------------------------------------------------------------------ */
+const ROUND_PIX = {
+  1: ["...######...", ".##########.", "############", "##..####..##", "############", "############", ".##########.", ".#........#.", "..#......#..", "..########..", "...######...", "....####...."],
+  2: [".....##.....", "....####....", "....####....", ".....##.....", "..#######...", ".###.###....", "....####....", "...##.##....", "..##...##...", ".##.....##..", "##.......#..", "............"],
+  3: [".##########.", "############", "############", "####....####", "############", "############", ".##########.", "..####......", "..###.......", "..#.........", "............", "............"],
+  4: ["..#.#.#.#...", "..#.#.#.#...", "..#.#.#.#...", "..#######...", ".########...", ".########...", "..#######...", "..#######...", "...#####....", "...#####....", "............", "............"],
+  5: ["....####....", "..########..", ".##########.", "###..#######", "############", "###..##..###", "############", "############", "####....####", "..########..", "....####....", "............"],
+};
+// Render a round's sprite as inline SVG that scales with the font size and
+// stays pixel-crisp at any zoom.
+function RoundIcon({ n, className = "" }) {
+  const rows = ROUND_PIX[n];
+  if (!rows) return null;
+  const w = rows[0].length, h = rows.length, px = [];
+  rows.forEach((row, y) => { for (let x = 0; x < row.length; x++) if (row[x] === "#") px.push(<rect key={`${x},${y}`} x={x} y={y} width="1" height="1" />); });
+  return (
+    <svg className={`fb-pixicon ${className}`} viewBox={`0 0 ${w} ${h}`} fill="currentColor"
+      shapeRendering="crispEdges" role="img" aria-hidden="true">{px}</svg>
+  );
+}
+
 /* ================================================================== *
  * MURRAY'S GAME - a 5-round Fishbowl for South African students.
  * P2P rooms, no backend.
@@ -203,7 +232,7 @@ function Landing({ onPick }) {
         <ol className="fb-rounds">
           {ROUNDS.map((r) => (
             <li key={r.n} style={{ "--tc": r.accent }}>
-              <span className="fb-rname">{r.icon} {t(`round.${r.n}.name`)}</span>
+              <span className="fb-rname"><RoundIcon n={r.n} /> {t(`round.${r.n}.name`)}</span>
               <span className="fb-rgloss">{t(`round.${r.n}.gloss`)}</span>
             </li>
           ))}
@@ -713,7 +742,7 @@ const RoundDots = ({ n }) => (
 );
 const RoundLine = ({ r }) => {
   const t = useT();
-  return <div className="fb-roundline"><span className="fb-roundtag">{r.icon} {t(`round.${r.n}.name`)}</span><RoundDots n={r.n} /></div>;
+  return <div className="fb-roundline"><span className="fb-roundtag"><RoundIcon n={r.n} /> {t(`round.${r.n}.name`)}</span><RoundDots n={r.n} /></div>;
 };
 const Rules = ({ r, tight }) => {
   const t = useT();
@@ -882,7 +911,7 @@ function Transition({ v, onIntent }) {
       <div className="fb-card fb-stack fb-center">
         <div className="fb-flash big">{tr("trans.roundOver")}</div>
         <p className="fb-paused">{tr("trans.pausedLead")} <b>{v.timeLeft}s</b> {tr("trans.pausedLeft")}</p>
-        <div className="fb-nextsetup">{r.icon} <Tr value={tr("trans.roundIs", { n: r.n, name: tr(`round.${r.n}.name`).toUpperCase() })} /><span>{tr(`round.${r.n}.setup`)}</span></div>
+        <div className="fb-nextsetup"><span className="fb-nextsetuphead"><RoundIcon n={r.n} /> <Tr value={tr("trans.roundIs", { n: r.n, name: tr(`round.${r.n}.name`).toUpperCase() })} /></span><span>{tr(`round.${r.n}.setup`)}</span></div>
         <RoundDots n={r.n} />
         <Rules r={r} />
         {v.canResume ? <button className="fb-btn fb-big" onClick={() => onIntent("RESUME")}>{tr("trans.resume")}</button>
@@ -907,7 +936,7 @@ function Endgame({ v }) {
       ))}
       <details className="fb-details"><summary>{tr("end.roundByRound")}</summary>
         <div className="fb-scroll"><table className="fb-table">
-          <thead><tr><th>{tr("end.team")}</th>{ROUNDS.map((r) => <th key={r.n}><span className="fb-th2">{r.icon}<span>{tr("end.r", { n: r.n })}</span></span></th>)}</tr></thead>
+          <thead><tr><th>{tr("end.team")}</th>{ROUNDS.map((r) => <th key={r.n}><span className="fb-th2"><RoundIcon n={r.n} /><span>{tr("end.r", { n: r.n })}</span></span></th>)}</tr></thead>
           <tbody>{ranked.map((t) => <tr key={t.id}><td style={{ color: t.color }}>{t.name}</td>{v.scores[t.id].map((s, i) => <td key={i}>{s}</td>)}</tr>)}</tbody>
         </table></div>
       </details>
@@ -1168,6 +1197,9 @@ const CSS = `
 .fb-rounds li{display:flex;align-items:baseline;gap:9px;text-align:left;}
 .fb-rname{font-family:Archivo,sans-serif;font-weight:800;font-size:14.5px;color:var(--ink);white-space:nowrap;flex:none;}
 .fb-rgloss{color:var(--muted);font-size:13px;line-height:1.3;}
+/* chunky pixel-art round glyphs - scale with the text, stay crisp */
+.fb-pixicon{display:inline-block;width:1.15em;height:1.15em;vertical-align:-0.18em;flex:none;}
+.fb-roundtag .fb-pixicon{width:1.25em;height:1.25em;vertical-align:-0.22em;}
 
 .fb-steps{display:flex;gap:8px;}
 .fb-step{flex:1;display:flex;align-items:center;justify-content:center;gap:7px;background:var(--panel);border:2.5px solid var(--ink);border-radius:6px;padding:11px 6px;font-family:'Space Mono',monospace;font-weight:700;font-size:12px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);cursor:pointer;}
@@ -1257,6 +1289,7 @@ const CSS = `
 .fb-paused{margin:0;color:var(--muted);font-family:'Space Mono',monospace;font-size:13px;}.fb-paused b{color:var(--ink);font-size:18px;}
 .fb-nextsetup{font-family:Anton,sans-serif;font-size:21px;color:var(--accent);display:flex;flex-direction:column;gap:5px;line-height:1.1;}
 .fb-nextsetup span{font-family:Archivo,sans-serif;font-size:13px;color:var(--muted);}
+.fb-nextsetup .fb-nextsetuphead{font-family:Anton,sans-serif;font-size:21px;color:var(--accent);display:inline-flex;align-items:center;justify-content:center;gap:7px;}
 
 .fb-standings{display:flex;flex-wrap:wrap;gap:14px;justify-content:center;width:100%;box-sizing:border-box;color:var(--muted);font-size:13px;background:var(--panel);border:2.5px solid var(--ink);box-shadow:4px 4px 0 var(--ink);border-radius:6px;padding:11px 12px;margin-top:6px;font-family:'Space Mono',monospace;}
 .fb-standings b{font-family:Anton,sans-serif;font-weight:400;font-size:18px;vertical-align:-2px;}
