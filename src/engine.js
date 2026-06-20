@@ -25,24 +25,57 @@ export const MIN_WORDS = 4, MAX_TEAMS = 6, TURN_SECONDS = 60;
 
 // Murray's deck — South African student / varsity culture. Lekker, actable
 // across all five rounds, and recognizable to anyone who's survived res,
-// load shedding and a Friday jol. Kept broadly kid-safe.
+// load shedding and a Friday jol. Kept broadly kid-safe. Big on purpose so
+// the bowl stays fresh game after game; players still add their own on top.
 export const MURRAY_DECK = [
   // braai & kos
   "Braai", "Boerewors", "Biltong", "Pap en wors", "Chakalaka", "Koeksister", "Bunny chow", "Vetkoek",
-  "Melktert", "Gatsby", "Droëwors", "Rooibos", "Mageu", "Amarula", "Nando's", "Spur",
+  "Melktert", "Gatsby", "Droëwors", "Bobotie", "Potjiekos", "Sosatie", "Snoek", "Samp",
+  "Morogo", "Walkie talkies", "Smiley", "Kota", "Magwinya", "Peppermint crisp tart", "Rusks",
+  "Niknaks", "Simba chips", "Mrs Ball's chutney", "Boerewors roll", "Shisanyama",
+  // drinks
+  "Rooibos", "Mageu", "Amarula", "Oros", "Stoney", "Creme soda", "Appletiser", "Castle Lager",
+  "Klipdrift", "Savanna", "Rock shandy", "Springbokkie", "Milo",
   // varsity life
-  "Load shedding", "Eskom", "Res", "NSFAS", "Mini bus taxi", "Bakkie", "Gautrain", "Robot",
-  "Babbelas", "Jol", "Dop", "Padkos", "Takkies", "Slip slops", "Cooldrink", "Sarmie",
-  // slang & people
+  "Res", "NSFAS", "Digs", "All-nighter", "Cramming", "Past papers", "Group project",
+  "Supp exam", "Graduation", "Stipend", "Bursary", "Lecture hall", "Tutorial", "Campus",
+  "Babbelas", "Jol", "Dop", "Pre-drinks", "Padkos", "Hangover",
+  // slang & expressions
   "Howzit", "Lekker", "Eish", "Shame", "Sharp sharp", "Just now", "Now now", "Boet",
-  "China", "Skinner", "Voetsek", "Aweh", "Kiff", "Yoh",
-  // places & icons
+  "China", "Skinner", "Voetsek", "Aweh", "Kiff", "Yoh", "Sho't left", "Hayibo",
+  "Yebo", "Sawubona", "Mzansi", "Tannie", "Oom", "Bru", "Hectic", "Sjoe",
+  // people & icons
+  "Madiba", "Desmond Tutu", "Trevor Noah", "Charlize Theron", "Elon Musk", "Siya Kolisi",
+  "Caster Semenya", "Black Coffee", "Nasty C", "Tyla", "Master KG", "Miriam Makeba",
+  "Brenda Fassie", "Hugh Masekela", "Johnny Clegg", "Lucky Dube", "AB de Villiers",
+  "Gary Player", "John Kani", "Bafana Bafana", "The Bokke",
+  // music & dance
+  "Amapiano", "Kwaito", "Gqom", "Vuvuzela", "Gumboot dance", "Toyi-toyi", "Jerusalema",
+  "Pantsula", "Maskandi", "Cassper Nyovest", "Mafikizolo",
+  // places & landmarks
   "Table Mountain", "Kruger Park", "Robben Island", "Long Street", "Soweto", "Drakensberg",
-  "Madiba", "Springbok", "Vuvuzela", "The Bokke", "Rand", "Big Five",
+  "Cape Town", "Joburg", "Durban", "Pretoria", "V&A Waterfront", "Garden Route", "Karoo",
+  "Kirstenbosch", "Boulders Beach", "God's Window", "Sun City", "Wild Coast", "Sandton",
+  "Stellenbosch", "Knysna", "Soccer City", "Vilakazi Street",
   // critters
   "Hadeda", "Dassie", "Meerkat", "Warthog", "Honey badger", "Rhino", "Vervet monkey",
+  "Springbok", "Lion", "Elephant", "Leopard", "Buffalo", "Cheetah", "Giraffe", "Zebra",
+  "Hippo", "Crocodile", "Penguin", "Ostrich", "Kudu", "Impala", "Baboon", "Black mamba",
+  "Guinea fowl", "Tortoise", "Big Five",
   // sport & doen
-  "Rugby", "Cricket", "Jukskei", "Sevens", "Stokvel", "Toyi-toyi",
+  "Rugby", "Cricket", "Jukskei", "Sevens", "Soccer", "Netball", "Comrades Marathon",
+  "Two Oceans", "Cape Town Cycle Tour", "Proteas", "Currie Cup", "Scrum", "Surfing", "Fishing",
+  // load shedding & everyday
+  "Load shedding", "Eskom", "Gautrain", "Minibus taxi", "Bakkie", "Robot", "Geyser",
+  "Stage 6", "Inverter", "Generator", "Prepaid electricity", "Pothole", "Toll gate",
+  "Spaza shop", "Car guard", "Petrol attendant", "Burglar bars", "Boom gate",
+  "Takkies", "Slip slops", "Cooldrink", "Sarmie",
+  // culture & society
+  "Stokvel", "Rand", "Lobola", "Ubuntu", "Heritage Day", "Braai Day", "Freedom Day",
+  "Youth Day", "Rainbow Nation", "Gogo", "Sangoma",
+  // brands & shops
+  "Nando's", "Spur", "Steers", "Wimpy", "Checkers", "Pick n Pay", "Woolworths", "Shoprite",
+  "Takealot", "Capitec", "Vodacom", "MTN",
 ];
 
 export const ICE = [{ urls: "stun:stun.l.google.com:19302" }];
