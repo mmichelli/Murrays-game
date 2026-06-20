@@ -1,13 +1,15 @@
 {
-  "name": "fishbowl-rooms",
+  "name": "murrays-game",
   "private": true,
   "version": "1.0.0",
   "type": "module",
-  "description": "5-round Fishbowl party game — peer-to-peer rooms, no backend.",
+  "description": "Murray's Game — a 5-round Fishbowl party game for South African students. Peer-to-peer, no backend.",
   "scripts": {
     "dev": "vite",
     "build": "vite build",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "test": "vitest run",
+    "test:watch": "vitest"
   },
   "dependencies": {
     "react": "^18.3.1",
@@ -15,6 +17,7 @@
   },
   "devDependencies": {
     "@vitejs/plugin-react": "^4.3.4",
-    "vite": "^5.4.11"
+    "vite": "^5.4.11",
+    "vitest": "^2.1.8"
   }
 }

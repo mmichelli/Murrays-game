@@ -1,0 +1,240 @@
+/* ================================================================== *
+ * MURRAY'S GAME — pure game engine + P2P hub (no React, no DOM).
+ *
+ * Everything here is framework-agnostic so it can be unit-tested in
+ * Node and reused by the React UI. The host runs `createHostHub`,
+ * which is the single source of truth: it owns the reducer state,
+ * broadcasts a privacy-filtered view to every connected device, and
+ * processes the messages players send over their WebRTC data channel.
+ * ================================================================== */
+
+export const ROUNDS = [
+  { n: 1, name: "Describe",   icon: "🎭", setup: "Stand in front of your team.",
+    allowed: "Sentences, descriptions, sounds, gestures.", restrict: "Don't say the word, parts of it, or rhymes.", accent: "#FF6A3D" },
+  { n: 2, name: "Charades",   icon: "🏃", setup: "Stand in front of your team.",
+    allowed: "Full-body acting and miming.", restrict: "Silence. No speaking, whispering or mouthing.", accent: "#2C6EE6" },
+  { n: 3, name: "One Word",   icon: "💬", setup: "Stand in front of your team.",
+    allowed: "Exactly one word, total, per card.", restrict: "Repeat it, but never change it or gesture.", accent: "#E8348B" },
+  { n: 4, name: "Hands Only", icon: "✋", setup: "Behind the couch — only hands show.",
+    allowed: "Fingers, hands and forearms.", restrict: "Silence. Head, face, torso, legs hidden.", accent: "#1AA67E" },
+  { n: 5, name: "Face Only",  icon: "🤨", setup: "Peek over the couch — only your face.",
+    allowed: "Eyes, brows, nose, mouth, head tilts.", restrict: "Silence. Neck down stays hidden.", accent: "#7A4DE0" },
+];
+export const PALETTE = ["#2C6EE6", "#E8348B", "#1AA67E", "#7A4DE0", "#FF6A3D", "#0E8C9B"];
+export const MIN_WORDS = 4, MAX_TEAMS = 6, TURN_SECONDS = 60;
+
+// Murray's deck — South African student / varsity culture. Lekker, actable
+// across all five rounds, and recognizable to anyone who's survived res,
+// load shedding and a Friday jol. Kept broadly kid-safe.
+export const MURRAY_DECK = [
+  // braai & kos
+  "Braai", "Boerewors", "Biltong", "Pap en wors", "Chakalaka", "Koeksister", "Bunny chow", "Vetkoek",
+  "Melktert", "Gatsby", "Droëwors", "Rooibos", "Mageu", "Amarula", "Nando's", "Spur",
+  // varsity life
+  "Load shedding", "Eskom", "Res", "NSFAS", "Mini bus taxi", "Bakkie", "Gautrain", "Robot",
+  "Babbelas", "Jol", "Dop", "Padkos", "Takkies", "Slip slops", "Cooldrink", "Sarmie",
+  // slang & people
+  "Howzit", "Lekker", "Eish", "Shame", "Sharp sharp", "Just now", "Now now", "Boet",
+  "China", "Skinner", "Voetsek", "Aweh", "Kiff", "Yoh",
+  // places & icons
+  "Table Mountain", "Kruger Park", "Robben Island", "Long Street", "Soweto", "Drakensberg",
+  "Madiba", "Springbok", "Vuvuzela", "The Bokke", "Rand", "Big Five",
+  // critters
+  "Hadeda", "Dassie", "Meerkat", "Warthog", "Honey badger", "Rhino", "Vervet monkey",
+  // sport & doen
+  "Rugby", "Cricket", "Jukskei", "Sevens", "Stokvel", "Toyi-toyi",
+];
+
+export const ICE = [{ urls: "stun:stun.l.google.com:19302" }];
+
+export const uid = () => Math.random().toString(36).slice(2, 8);
+export const shuffle = (a0) => { const a = [...a0]; for (let i = a.length - 1; i > 0; i--) { const j = (Math.random() * (i + 1)) | 0;[a[i], a[j]] = [a[j], a[i]]; } return a; };
+const zeros = (teams) => Object.fromEntries(teams.map((t) => [t.id, [0, 0, 0, 0, 0]]));
+
+// Signaling helpers. We pass plain RTCSessionDescriptionInit objects
+// ({type, sdp}) — every modern browser accepts these directly in
+// setLocal/RemoteDescription, and it keeps encode/decode testable in Node.
+export const encode = (d) => btoa(JSON.stringify({ type: d.type, sdp: d.sdp }));
+export const decode = (c) => JSON.parse(atob(c.trim()));
+export const waitIce = (pc) => pc.iceGatheringState === "complete" ? Promise.resolve()
+  : new Promise((res) => { const d = () => { pc.removeEventListener("icegatheringstatechange", c); res(); }; const c = () => pc.iceGatheringState === "complete" && d(); pc.addEventListener("icegatheringstatechange", c); setTimeout(d, 3000); });
+
+/* ----------------------- authoritative engine --------------------- */
+const teamPlayers = (s, idx) => s.players.filter((p) => p.teamId === s.teams[idx]?.id);
+function advanceTurn(s, keepCard) {
+  let idx = s.activeTeamIdx, tries = 0;
+  do { idx = (idx + 1) % s.teams.length; tries++; } while (teamPlayers(s, idx).length === 0 && tries <= s.teams.length);
+  if (teamPlayers(s, idx).length === 0) return { ...s, phase: "endgame", running: false };
+  return { ...s, activeTeamIdx: idx, activePlayerId: null, phase: "ready", running: false, timeLeft: 0,
+    activeCard: keepCard ? s.activeCard : null, turnNumber: s.turnNumber + 1 };
+}
+function resolveDeckEmpty(s) {
+  if (s.currentRound >= 5) return { ...s, phase: "endgame", running: false, activeCard: null };
+  return { ...s, deck: shuffle(s.discard), discard: [], activeCard: null, currentRound: s.currentRound + 1,
+    lastCompleted: s.currentRound, phase: "transition", running: false };
+}
+
+export const initial = {
+  phase: "lobby", teams: [], players: [], bowl: [],
+  deck: [], discard: [], activeCard: null,
+  currentRound: 1, activeTeamIdx: 0, activePlayerId: null,
+  timeLeft: TURN_SECONDS, running: false, scores: {}, turnNumber: 1, lastCompleted: 0,
+};
+
+export function reducer(state, a) {
+  switch (a.type) {
+    case "ADD_TEAM": return state.teams.length >= MAX_TEAMS ? state
+      : { ...state, teams: [...state.teams, { id: uid(), name: `Team ${state.teams.length + 1}` }] };
+    case "REMOVE_TEAM": return state.teams.length <= 2 ? state
+      : { ...state, teams: state.teams.filter((t) => t.id !== a.id),
+          players: state.players.map((p) => p.teamId === a.id ? { ...p, teamId: null } : p) };
+    case "RENAME_TEAM": return { ...state, teams: state.teams.map((t) => t.id === a.id ? { ...t, name: a.name } : t) };
+    case "ADD_PLAYER": return state.players.some((p) => p.id === a.player.id) ? state
+      : { ...state, players: [...state.players, a.player] };
+    case "REMOVE_PLAYER": return { ...state, players: state.players.filter((p) => p.id !== a.id) };
+    case "SET_TEAM": return { ...state, players: state.players.map((p) => p.id === a.id ? { ...p, teamId: a.teamId } : p) };
+    case "ADD_WORDS": {
+      const have = new Set(state.bowl.map((w) => w.toLowerCase()));
+      const add = [];
+      for (const w0 of a.words) { const w = w0.trim(); if (w && !have.has(w.toLowerCase())) { have.add(w.toLowerCase()); add.push(w); } }
+      return add.length ? { ...state, bowl: [...state.bowl, ...add] } : state;
+    }
+
+    case "START_GAME": {
+      const teams = state.teams.map((t, i) => ({ ...t, color: PALETTE[i % PALETTE.length] }));
+      const first = teams.findIndex((t) => state.players.some((p) => p.teamId === t.id));
+      return { ...state, teams, phase: "ready", deck: shuffle(state.bowl), discard: [], activeCard: null,
+        currentRound: 1, activeTeamIdx: first < 0 ? 0 : first, activePlayerId: null,
+        scores: zeros(teams), timeLeft: TURN_SECONDS, running: false, turnNumber: 1, lastCompleted: 0 };
+    }
+
+    case "CLAIM_AND_BEGIN": {
+      if (state.phase !== "ready" || state.activePlayerId) return state;
+      const me = state.players.find((p) => p.id === a.fromId);
+      if (!me || me.teamId !== state.teams[state.activeTeamIdx].id) return state;
+      let { deck, activeCard } = state;
+      if (!activeCard && deck.length) { activeCard = deck[0]; deck = deck.slice(1); }
+      return { ...state, activePlayerId: a.fromId, phase: "play", running: true, timeLeft: TURN_SECONDS, deck, activeCard };
+    }
+
+    case "CORRECT": {
+      if (state.phase !== "play" || !state.running || !state.activeCard || a.fromId !== state.activePlayerId) return state;
+      const id = state.teams[state.activeTeamIdx].id;
+      const scores = { ...state.scores, [id]: state.scores[id].map((v, i) => i === state.currentRound - 1 ? v + 1 : v) };
+      const discard = [...state.discard, state.activeCard];
+      if (state.deck.length === 0) return resolveDeckEmpty({ ...state, scores, discard, activeCard: null });
+      return { ...state, scores, discard, activeCard: state.deck[0], deck: state.deck.slice(1) };
+    }
+
+    case "TICK": {
+      if (!state.running) return state;
+      const t = state.timeLeft - 1;
+      if (t > 0) return { ...state, timeLeft: t };
+      return advanceTurn({ ...state, timeLeft: 0 }, true);
+    }
+    case "RESUME": {
+      if (state.phase !== "transition" || a.fromId !== state.activePlayerId) return state;
+      let { deck } = state, activeCard = null;
+      if (deck.length) { activeCard = deck[0]; deck = deck.slice(1); }
+      return { ...state, phase: "play", running: true, deck, activeCard };
+    }
+    case "FORCE_NEXT": return ["ready", "play", "transition"].includes(state.phase) ? advanceTurn({ ...state, running: false }, false) : state;
+    case "END_GAME": return { ...state, phase: "endgame", running: false };
+    case "PLAY_AGAIN": {
+      const first = state.teams.findIndex((t) => state.players.some((p) => p.teamId === t.id));
+      return { ...state, phase: "ready", deck: shuffle(state.bowl), discard: [], activeCard: null, currentRound: 1,
+        activeTeamIdx: first < 0 ? 0 : first, activePlayerId: null, scores: zeros(state.teams),
+        timeLeft: TURN_SECONDS, running: false, turnNumber: 1, lastCompleted: 0 };
+    }
+    default: return state;
+  }
+}
+
+/* privacy filter — exactly what one device may see */
+export function viewFor(s, pid) {
+  const r = ROUNDS[s.currentRound - 1];
+  const me = s.players.find((p) => p.id === pid);
+  const up = s.teams[s.activeTeamIdx];
+  const isActive = s.activePlayerId === pid;
+  const myTeamUp = me && up && me.teamId === up.id;
+  return {
+    phase: s.phase, round: r && { ...r }, teams: s.teams,
+    teamUpName: up?.name, teamUpColor: up?.color,
+    activeName: s.players.find((p) => p.id === s.activePlayerId)?.name || "",
+    timeLeft: s.timeLeft, running: s.running, scores: s.scores, turnNumber: s.turnNumber,
+    myTeamId: me?.teamId, isActive,
+    canClaim: s.phase === "ready" && !s.activePlayerId && myTeamUp,
+    canCorrect: s.phase === "play" && s.running && isActive && !!s.activeCard,
+    canResume: s.phase === "transition" && isActive,
+    word: isActive && s.phase === "play" ? s.activeCard : null,
+    inherited: isActive && s.phase === "ready" && !!s.activeCard && s.turnNumber > 1,
+  };
+}
+export const lobbyFor = (s, pid) => ({
+  teams: s.teams.map((t, i) => ({ id: t.id, name: t.name, color: PALETTE[i % PALETTE.length] })),
+  bowlCount: s.bowl.length, started: s.phase !== "lobby", youId: pid,
+  roster: s.players.map((p) => ({ name: p.name, teamId: p.teamId })),
+});
+
+/* ------------------------ P2P host hub ---------------------------- *
+ * Owns the authoritative state, the connected channels, and the
+ * message protocol. The React host wraps this; tests drive it with
+ * in-memory channels. A "channel" is anything WebRTC-shaped:
+ *   { readyState, send(str), onmessage(ev), onclose() }  plus a
+ *   private `_pid` we stamp on once the player says hello.
+ * ------------------------------------------------------------------ */
+export function createHostHub({ onState } = {}) {
+  let state = initial;
+  const channels = new Map(); // pid -> channel
+
+  const send = (ch, obj) => { if (ch && ch.readyState === "open") { try { ch.send(JSON.stringify(obj)); } catch {} } };
+
+  function broadcast() {
+    channels.forEach((ch, pid) => {
+      const msg = state.phase === "lobby"
+        ? { t: "lobby", lobby: lobbyFor(state, pid) }
+        : { t: "view", view: viewFor(state, pid) };
+      send(ch, msg);
+    });
+  }
+
+  function dispatch(action) {
+    const next = reducer(state, action);
+    if (next === state) return state;
+    state = next;
+    broadcast();
+    onState?.(state);
+    return state;
+  }
+
+  function handle(ch, m) {
+    if (m.t === "hello") {
+      const pid = uid();
+      channels.set(pid, ch); ch._pid = pid;
+      send(ch, { t: "welcome", youId: pid });
+      dispatch({ type: "ADD_PLAYER", player: { id: pid, name: m.name || "Player", teamId: null } });
+    } else if (m.t === "setTeam" && ch._pid) {
+      dispatch({ type: "SET_TEAM", id: ch._pid, teamId: m.teamId });
+    } else if (m.t === "words" && ch._pid) {
+      dispatch({ type: "ADD_WORDS", words: m.words || [] });
+    } else if (m.t === "intent" && ch._pid) {
+      dispatch({ type: m.action, fromId: ch._pid });
+    }
+  }
+
+  // Attach a freshly opened data channel (or any channel-shaped object).
+  function attach(ch) {
+    ch.onmessage = (e) => { try { handle(ch, JSON.parse(e.data)); } catch {} };
+    ch.onclose = () => {
+      if (ch._pid) { const pid = ch._pid; channels.delete(pid); dispatch({ type: "REMOVE_PLAYER", id: pid }); }
+    };
+    return ch;
+  }
+
+  return {
+    attach,
+    dispatch,
+    getState: () => state,
+    channelCount: () => channels.size,
+  };
+}

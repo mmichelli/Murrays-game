@@ -1,7 +1,13 @@
 import React, { useReducer, useEffect, useState, useRef, useMemo, useCallback } from "react";
+import {
+  ROUNDS, PALETTE, MIN_WORDS, MAX_TEAMS, TURN_SECONDS, MURRAY_DECK, ICE,
+  uid, encode, decode, waitIce, reducer, initial, viewFor, createHostHub,
+} from "./engine.js";
 
 /* ================================================================== *
- * 5-ROUND FISHBOWL — P2P rooms. No backend.
+ * MURRAY'S GAME — a 5-round Fishbowl for South African students.
+ * P2P rooms, no backend.
+ *
  * One HOST phone is the room (authoritative engine + timer + hub).
  * Every other phone connects once (copy-paste signaling), then:
  *   - all phones add words to the shared bowl in PARALLEL
@@ -13,162 +19,11 @@ import React, { useReducer, useEffect, useState, useRef, useMemo, useCallback } 
  * word arrives as a torn paper slip with a colored misregistration
  * ghost in the round's ink.
  *
- * Won't connect inside the chat preview (sandbox blocks WebRTC).
- * Test: two browser tabs (loopback, no STUN) or phones on one WiFi
- * served over https / localhost.
+ * Pure game logic + the P2P host hub live in ./engine.js (unit-tested).
+ *
+ * Test P2P with two browser tabs, or phones on one WiFi served over
+ * https / localhost (WebRTC needs a secure context).
  * ================================================================== */
-
-const ROUNDS = [
-  { n: 1, name: "Describe",   icon: "🎭", setup: "Stand in front of your team.",
-    allowed: "Sentences, descriptions, sounds, gestures.", restrict: "Don't say the word, parts of it, or rhymes.", accent: "#FF6A3D" },
-  { n: 2, name: "Charades",   icon: "🏃", setup: "Stand in front of your team.",
-    allowed: "Full-body acting and miming.", restrict: "Silence. No speaking, whispering or mouthing.", accent: "#2C6EE6" },
-  { n: 3, name: "One Word",   icon: "💬", setup: "Stand in front of your team.",
-    allowed: "Exactly one word, total, per card.", restrict: "Repeat it, but never change it or gesture.", accent: "#E8348B" },
-  { n: 4, name: "Hands Only", icon: "✋", setup: "Behind the couch — only hands show.",
-    allowed: "Fingers, hands and forearms.", restrict: "Silence. Head, face, torso, legs hidden.", accent: "#1AA67E" },
-  { n: 5, name: "Face Only",  icon: "🤨", setup: "Peek over the couch — only your face.",
-    allowed: "Eyes, brows, nose, mouth, head tilts.", restrict: "Silence. Neck down stays hidden.", accent: "#7A4DE0" },
-];
-const PALETTE = ["#2C6EE6", "#E8348B", "#1AA67E", "#7A4DE0", "#FF6A3D", "#0E8C9B"];
-const MIN_WORDS = 4, MAX_TEAMS = 6, TURN_SECONDS = 60;
-
-// Quick-play deck — actable across all five rounds, broadly recognizable, kid-safe.
-const QUICK_DECK = [
-  "Penguin", "Octopus", "Kangaroo", "Flamingo", "Dragon", "Shark", "Sloth", "Hedgehog", "Dolphin", "Squirrel",
-  "Pizza", "Spaghetti", "Pineapple", "Taco", "Popcorn", "Cupcake", "Sushi", "Avocado", "Pretzel", "Watermelon",
-  "Umbrella", "Toothbrush", "Vacuum", "Telescope", "Skateboard", "Trampoline", "Anchor", "Lawnmower", "Helicopter", "Hammock",
-  "Eiffel Tower", "Pyramid", "Volcano", "Lighthouse", "Igloo", "Waterfall", "Windmill", "Treehouse",
-  "Astronaut", "Pirate", "Ninja", "Wizard", "Cowboy", "Mermaid", "Vampire", "Clown", "Lifeguard", "Scarecrow", "Caveman", "Knight",
-  "Sneeze", "Yoga", "Selfie", "Karate", "Juggling", "Moonwalk", "Limbo", "Tornado", "Rainbow", "Snowman",
-  "Robot", "Zombie", "Unicorn", "Dinosaur", "Bagpipes", "Disco", "Karaoke", "Hula hoop",
-];
-const ICE = [{ urls: "stun:stun.l.google.com:19302" }];
-
-const uid = () => Math.random().toString(36).slice(2, 8);
-const shuffle = (a0) => { const a = [...a0]; for (let i = a.length - 1; i > 0; i--) { const j = (Math.random() * (i + 1)) | 0;[a[i], a[j]] = [a[j], a[i]]; } return a; };
-const zeros = (teams) => Object.fromEntries(teams.map((t) => [t.id, [0, 0, 0, 0, 0]]));
-const encode = (d) => btoa(JSON.stringify({ type: d.type, sdp: d.sdp }));
-const decode = (c) => new RTCSessionDescription(JSON.parse(atob(c.trim())));
-const waitIce = (pc) => pc.iceGatheringState === "complete" ? Promise.resolve()
-  : new Promise((res) => { const d = () => { pc.removeEventListener("icegatheringstatechange", c); res(); }; const c = () => pc.iceGatheringState === "complete" && d(); pc.addEventListener("icegatheringstatechange", c); setTimeout(d, 3000); });
-
-/* ----------------------- authoritative engine --------------------- */
-const teamPlayers = (s, idx) => s.players.filter((p) => p.teamId === s.teams[idx]?.id);
-function advanceTurn(s, keepCard) {
-  let idx = s.activeTeamIdx, tries = 0;
-  do { idx = (idx + 1) % s.teams.length; tries++; } while (teamPlayers(s, idx).length === 0 && tries <= s.teams.length);
-  if (teamPlayers(s, idx).length === 0) return { ...s, phase: "endgame", running: false };
-  return { ...s, activeTeamIdx: idx, activePlayerId: null, phase: "ready", running: false, timeLeft: 0,
-    activeCard: keepCard ? s.activeCard : null, turnNumber: s.turnNumber + 1 };
-}
-function resolveDeckEmpty(s) {
-  if (s.currentRound >= 5) return { ...s, phase: "endgame", running: false, activeCard: null };
-  return { ...s, deck: shuffle(s.discard), discard: [], activeCard: null, currentRound: s.currentRound + 1,
-    lastCompleted: s.currentRound, phase: "transition", running: false };
-}
-
-const initial = {
-  phase: "lobby", teams: [], players: [], bowl: [],
-  deck: [], discard: [], activeCard: null,
-  currentRound: 1, activeTeamIdx: 0, activePlayerId: null,
-  timeLeft: TURN_SECONDS, running: false, scores: {}, turnNumber: 1, lastCompleted: 0,
-};
-
-function reducer(state, a) {
-  switch (a.type) {
-    case "ADD_TEAM": return state.teams.length >= MAX_TEAMS ? state
-      : { ...state, teams: [...state.teams, { id: uid(), name: `Team ${state.teams.length + 1}` }] };
-    case "REMOVE_TEAM": return state.teams.length <= 2 ? state
-      : { ...state, teams: state.teams.filter((t) => t.id !== a.id),
-          players: state.players.map((p) => p.teamId === a.id ? { ...p, teamId: null } : p) };
-    case "RENAME_TEAM": return { ...state, teams: state.teams.map((t) => t.id === a.id ? { ...t, name: a.name } : t) };
-    case "ADD_PLAYER": return state.players.some((p) => p.id === a.player.id) ? state
-      : { ...state, players: [...state.players, a.player] };
-    case "REMOVE_PLAYER": return { ...state, players: state.players.filter((p) => p.id !== a.id) };
-    case "SET_TEAM": return { ...state, players: state.players.map((p) => p.id === a.id ? { ...p, teamId: a.teamId } : p) };
-    case "ADD_WORDS": {
-      const have = new Set(state.bowl.map((w) => w.toLowerCase()));
-      const add = [];
-      for (const w0 of a.words) { const w = w0.trim(); if (w && !have.has(w.toLowerCase())) { have.add(w.toLowerCase()); add.push(w); } }
-      return add.length ? { ...state, bowl: [...state.bowl, ...add] } : state;
-    }
-
-    case "START_GAME": {
-      const teams = state.teams.map((t, i) => ({ ...t, color: PALETTE[i % PALETTE.length] }));
-      const first = teams.findIndex((t) => state.players.some((p) => p.teamId === t.id));
-      return { ...state, teams, phase: "ready", deck: shuffle(state.bowl), discard: [], activeCard: null,
-        currentRound: 1, activeTeamIdx: first < 0 ? 0 : first, activePlayerId: null,
-        scores: zeros(teams), timeLeft: TURN_SECONDS, running: false, turnNumber: 1, lastCompleted: 0 };
-    }
-
-    case "CLAIM_AND_BEGIN": {
-      if (state.phase !== "ready" || state.activePlayerId) return state;
-      const me = state.players.find((p) => p.id === a.fromId);
-      if (!me || me.teamId !== state.teams[state.activeTeamIdx].id) return state;
-      let { deck, activeCard } = state;
-      if (!activeCard && deck.length) { activeCard = deck[0]; deck = deck.slice(1); }
-      return { ...state, activePlayerId: a.fromId, phase: "play", running: true, timeLeft: TURN_SECONDS, deck, activeCard };
-    }
-
-    case "CORRECT": {
-      if (state.phase !== "play" || !state.running || !state.activeCard || a.fromId !== state.activePlayerId) return state;
-      const id = state.teams[state.activeTeamIdx].id;
-      const scores = { ...state.scores, [id]: state.scores[id].map((v, i) => i === state.currentRound - 1 ? v + 1 : v) };
-      const discard = [...state.discard, state.activeCard];
-      if (state.deck.length === 0) return resolveDeckEmpty({ ...state, scores, discard, activeCard: null });
-      return { ...state, scores, discard, activeCard: state.deck[0], deck: state.deck.slice(1) };
-    }
-
-    case "TICK": {
-      if (!state.running) return state;
-      const t = state.timeLeft - 1;
-      if (t > 0) return { ...state, timeLeft: t };
-      return advanceTurn({ ...state, timeLeft: 0 }, true);
-    }
-    case "RESUME": {
-      if (state.phase !== "transition" || a.fromId !== state.activePlayerId) return state;
-      let { deck } = state, activeCard = null;
-      if (deck.length) { activeCard = deck[0]; deck = deck.slice(1); }
-      return { ...state, phase: "play", running: true, deck, activeCard };
-    }
-    case "FORCE_NEXT": return ["ready", "play", "transition"].includes(state.phase) ? advanceTurn({ ...state, running: false }, false) : state;
-    case "END_GAME": return { ...state, phase: "endgame", running: false };
-    case "PLAY_AGAIN": {
-      const first = state.teams.findIndex((t) => state.players.some((p) => p.teamId === t.id));
-      return { ...state, phase: "ready", deck: shuffle(state.bowl), discard: [], activeCard: null, currentRound: 1,
-        activeTeamIdx: first < 0 ? 0 : first, activePlayerId: null, scores: zeros(state.teams),
-        timeLeft: TURN_SECONDS, running: false, turnNumber: 1, lastCompleted: 0 };
-    }
-    default: return state;
-  }
-}
-
-/* privacy filter — exactly what one device may see */
-function viewFor(s, pid) {
-  const r = ROUNDS[s.currentRound - 1];
-  const me = s.players.find((p) => p.id === pid);
-  const up = s.teams[s.activeTeamIdx];
-  const isActive = s.activePlayerId === pid;
-  const myTeamUp = me && up && me.teamId === up.id;
-  return {
-    phase: s.phase, round: r && { ...r }, teams: s.teams,
-    teamUpName: up?.name, teamUpColor: up?.color,
-    activeName: s.players.find((p) => p.id === s.activePlayerId)?.name || "",
-    timeLeft: s.timeLeft, running: s.running, scores: s.scores, turnNumber: s.turnNumber,
-    myTeamId: me?.teamId, isActive,
-    canClaim: s.phase === "ready" && !s.activePlayerId && myTeamUp,
-    canCorrect: s.phase === "play" && s.running && isActive && !!s.activeCard,
-    canResume: s.phase === "transition" && isActive,
-    word: isActive && s.phase === "play" ? s.activeCard : null,
-    inherited: isActive && s.phase === "ready" && !!s.activeCard && s.turnNumber > 1,
-  };
-}
-const lobbyFor = (s, pid) => ({
-  teams: s.teams.map((t, i) => ({ id: t.id, name: t.name, color: PALETTE[i % PALETTE.length] })),
-  bowlCount: s.bowl.length, started: s.phase !== "lobby", youId: pid,
-  roster: s.players.map((p) => ({ name: p.name, teamId: p.teamId })),
-});
 
 /* ============================== APP ============================== */
 export default function App() {
@@ -177,7 +32,7 @@ export default function App() {
     <div className="fb-root" style={{ "--accent": "#FF6A3D" }}>
       <style>{CSS}</style>
       <div className="fb-shell">
-        <div className="fb-brand">🐟 FISHBOWL <span>rooms</span></div>
+        <div className="fb-brand">🇿🇦 MURRAY'S GAME <span>varsity edition</span></div>
         {role && <div className="fb-topbackwrap"><button className="fb-topback" onClick={() => setRole(null)}>← Leave to start</button></div>}
         {!role && <Landing onPick={setRole} />}
         {role === "host" && <HostApp onExit={() => setRole(null)} />}
@@ -189,9 +44,9 @@ export default function App() {
 function Landing({ onPick }) {
   return (
     <div className="fb-card fb-stack fb-center">
-      <div className="fb-sliprow" aria-hidden="true"><span>talk</span><span>mime</span><span>peek</span></div>
+      <div className="fb-sliprow" aria-hidden="true"><span>praat</span><span>mime</span><span>loer</span></div>
       <h1 className="fb-h1 fb-xl">Five rounds.<br />One bowl.</h1>
-      <p className="fb-muted">One phone opens the room. Everyone connects, drops words in the bowl together, then plays. The word only shows on whoever's giving clues.</p>
+      <p className="fb-muted">One phone opens the room. Everyone connects, drops words in the bowl together, then plays. The word only shows on whoever's giving clues. Howzit — let's jol.</p>
       <button className="fb-btn" onClick={() => onPick("host")}>Open a room</button>
       <button className="fb-btn fb-ghost" onClick={() => onPick("client")}>Join a room</button>
       <p className="fb-tiny">No server — phones connect directly. Same WiFi works best.</p>
@@ -201,59 +56,40 @@ function Landing({ onPick }) {
 
 /* ============================== HOST ============================== */
 function HostApp({ onExit }) {
-  const [state, dispatch] = useReducer(reducer, initial);
   const hostId = useRef(uid()).current;
-  const channels = useRef(new Map());
-  const stateRef = useRef(state); stateRef.current = state;
+  const [state, setState] = useState(initial);
+  const hubRef = useRef(null);
+  if (!hubRef.current) hubRef.current = createHostHub({ onState: setState });
+  const hub = hubRef.current;
+  const dispatch = useCallback((a) => hub.dispatch(a), [hub]);
+
   const [name, setName] = useState("");
   const [open, setOpen] = useState(false);
 
   const view = useMemo(() => viewFor(state, hostId), [state, hostId]);
 
-  useEffect(() => {
-    channels.current.forEach((ch, pid) => {
-      if (ch.readyState !== "open") return;
-      const msg = state.phase === "lobby" ? { t: "lobby", lobby: lobbyFor(state, pid) } : { t: "view", view: viewFor(state, pid) };
-      try { ch.send(JSON.stringify(msg)); } catch {}
-    });
-  }, [state]);
-
-  useEffect(() => { if (!state.running) return; const id = setInterval(() => dispatch({ type: "TICK" }), 1000); return () => clearInterval(id); }, [state.running]);
+  // Host is the authoritative timer.
+  useEffect(() => { if (!state.running) return; const id = setInterval(() => dispatch({ type: "TICK" }), 1000); return () => clearInterval(id); }, [state.running, dispatch]);
   useEffect(() => {
     const onKey = (e) => { if (e.code === "Space" && view.canCorrect) { e.preventDefault(); dispatch({ type: "CORRECT", fromId: hostId }); } };
     window.addEventListener("keydown", onKey); return () => window.removeEventListener("keydown", onKey);
-  }, [view.canCorrect, hostId]);
-
-  const wire = useCallback((ch) => {
-    ch.onmessage = (e) => {
-      const m = JSON.parse(e.data);
-      if (m.t === "hello") {
-        const pid = uid(); channels.current.set(pid, ch); ch._pid = pid;
-        dispatch({ type: "ADD_PLAYER", player: { id: pid, name: m.name || "Player", teamId: null } });
-        try { ch.send(JSON.stringify({ t: "welcome", youId: pid })); } catch {}
-      } else if (m.t === "setTeam" && ch._pid) dispatch({ type: "SET_TEAM", id: ch._pid, teamId: m.teamId });
-      else if (m.t === "words" && ch._pid) dispatch({ type: "ADD_WORDS", words: m.words || [] });
-      else if (m.t === "intent" && ch._pid) dispatch({ type: m.action, fromId: ch._pid });
-    };
-    ch.onclose = () => { if (ch._pid) { dispatch({ type: "REMOVE_PLAYER", id: ch._pid }); channels.current.delete(ch._pid); } };
-  }, []);
+  }, [view.canCorrect, hostId, dispatch]);
 
   const makeAnswer = useCallback(async (joinCode) => {
     const pc = new RTCPeerConnection({ iceServers: ICE });
-    pc.ondatachannel = (e) => wire(e.channel);
+    pc.ondatachannel = (e) => hub.attach(e.channel);
     await pc.setRemoteDescription(decode(joinCode));
     await pc.setLocalDescription(await pc.createAnswer());
     await waitIce(pc);
     return encode(pc.localDescription);
-  }, [wire]);
+  }, [hub]);
 
   const openRoom = () => {
     if (!name.trim()) return;
-    dispatch({ type: "ADD_TEAM" }); dispatch({ type: "ADD_TEAM" });
-    setTimeout(() => {
-      const first = stateRef.current.teams[0]?.id;
-      dispatch({ type: "ADD_PLAYER", player: { id: hostId, name: name.trim(), teamId: first, isHost: true } });
-    }, 0);
+    dispatch({ type: "ADD_TEAM" });
+    dispatch({ type: "ADD_TEAM" });
+    const first = hub.getState().teams[0]?.id;
+    dispatch({ type: "ADD_PLAYER", player: { id: hostId, name: name.trim(), teamId: first, isHost: true } });
     setOpen(true);
   };
 
@@ -276,6 +112,12 @@ function HostApp({ onExit }) {
         <span>Host</span>
         <button onClick={() => dispatch({ type: "FORCE_NEXT" })}>Force next turn</button>
         <button onClick={() => dispatch({ type: "END_GAME" })}>End game</button>
+      </div>
+    )}
+    {state.phase === "endgame" && (
+      <div className="fb-hostbar">
+        <span>Host</span>
+        <button onClick={() => dispatch({ type: "PLAY_AGAIN" })}>Play again — same bowl</button>
       </div>
     )}
   </>);
@@ -324,8 +166,8 @@ function HostLobby({ state, dispatch, hostId, makeAnswer, onExit }) {
         <h2 className="fb-h2">The bowl</h2>
         <p className="fb-muted"><b className="fb-num">{state.bowl.length}</b> words in — everyone adds at once. Need {MIN_WORDS}+.</p>
         <WordAdder onAdd={(ws) => dispatch({ type: "ADD_WORDS", words: ws })} />
-        <button className="fb-btn fb-ghost" onClick={() => dispatch({ type: "ADD_WORDS", words: QUICK_DECK })}>
-          ✨ Quick play — drop in {QUICK_DECK.length} party words
+        <button className="fb-btn fb-ghost" onClick={() => dispatch({ type: "ADD_WORDS", words: MURRAY_DECK })}>
+          🇿🇦 Load Murray's deck — {MURRAY_DECK.length} SA student words
         </button>
         <p className="fb-tiny">Adds to whatever's already in. Start right away, or let people sprinkle their own on top.</p>
       </div>
