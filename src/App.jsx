@@ -798,14 +798,13 @@ const CSS = `
 .fb-root{
   --paper:#E9E3D3; --panel:#FAF7F0; --slip:#FFFDF7; --ink:#221C18; --muted:#70675A; --line:#D7CFBC; --rule:30px;
   --green:#1AA67E; --amber:#E8920A; --red:#E0322B;
-  /* paper stock: a warm sheet, lit unevenly, ruled like a notebook page */
+  /* a warm paper desk, lit unevenly — the ruled pages sit on top of it */
   min-height:100vh;color:var(--ink);
   background-color:var(--paper);
   background-image:
     radial-gradient(150% 100% at 50% -25%, rgba(255,253,246,.66), rgba(255,253,246,0) 60%),
     radial-gradient(95% 80% at 9% 5%, rgba(255,250,236,.5), rgba(255,250,236,0) 46%),
-    radial-gradient(130% 120% at 93% 105%, rgba(120,94,56,.16), rgba(120,94,56,0) 55%),
-    repeating-linear-gradient(180deg, transparent 0 calc(var(--rule) - 1px), rgba(54,86,148,.06) calc(var(--rule) - 1px) var(--rule));
+    radial-gradient(130% 120% at 93% 105%, rgba(120,94,56,.16), rgba(120,94,56,0) 55%);
   background-attachment:fixed;
   font-family:Archivo,system-ui,sans-serif;display:flex;justify-content:center;padding:18px;box-sizing:border-box;position:relative;
 }
