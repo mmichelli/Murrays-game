@@ -203,7 +203,6 @@ function Landing({ onPick }) {
         <ol className="fb-rounds">
           {ROUNDS.map((r) => (
             <li key={r.n} style={{ "--tc": r.accent }}>
-              <span className="fb-rnum">{r.n}</span>
               <span className="fb-rname">{r.icon} {t(`round.${r.n}.name`)}</span>
               <span className="fb-rgloss">{t(`round.${r.n}.gloss`)}</span>
             </li>
@@ -1167,7 +1166,6 @@ const CSS = `
 .fb-roundlisttop{font-family:'Space Mono',monospace;font-weight:700;font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);text-align:left;}
 .fb-rounds{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:9px;width:100%;}
 .fb-rounds li{display:flex;align-items:baseline;gap:9px;text-align:left;}
-.fb-rnum{font-family:Anton,sans-serif;font-size:17px;color:var(--tc);min-width:15px;flex:none;}
 .fb-rname{font-family:Archivo,sans-serif;font-weight:800;font-size:14.5px;color:var(--ink);white-space:nowrap;flex:none;}
 .fb-rgloss{color:var(--muted);font-size:13px;line-height:1.3;}
 
