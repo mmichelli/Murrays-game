@@ -149,23 +149,35 @@ function HostApp({ onExit }) {
   }, [view.canCorrect, hostId, dispatch]);
 
   // Once the room is open, claim our room id on the broker and accept
-  // every phone that connects to the shared link.
+  // every phone that connects to the shared link. A broker blip (network,
+  // server or socket trouble) rebuilds the peer with backoff instead of
+  // hanging the host on "connecting" forever; only a genuinely fatal problem
+  // (the code is taken, or the browser can't do WebRTC) shows a dead end.
   useEffect(() => {
     if (!open) return;
-    let peer, cancelled = false;
-    (async () => {
+    let peer, cancelled = false, retry = 0, timer = null;
+    const FATAL = ["unavailable-id", "invalid-id", "invalid-key", "browser-incompatible", "ssl-unavailable"];
+    const spinUp = async () => {
       const { default: Peer } = await import("peerjs");
       if (cancelled) return;
       peer = new Peer(peerIdFor(roomCode), peerOptions());
       peerRef.current = peer;
-      peer.on("open", () => setPeerStatus("online"));
+      peer.on("open", () => { retry = 0; setPeerStatus("online"); });
       peer.on("connection", (conn) => hub.attach(peerChannel(conn)));
       // If the host phone backgrounds, the broker link can drop. Reclaim it
       // (same room id) so players' reconnect attempts find the room again.
       peer.on("disconnected", () => { if (!cancelled) { setPeerStatus("connecting"); try { peer.reconnect(); } catch {} } });
-      peer.on("error", (err) => { if (err?.type === "unavailable-id") setPeerStatus("error"); });
-    })();
-    return () => { cancelled = true; try { peer && peer.destroy(); } catch {} };
+      peer.on("error", (err) => {
+        if (FATAL.includes(err?.type)) { setPeerStatus("error"); return; }
+        if (cancelled) return;
+        setPeerStatus("connecting");
+        try { peer.destroy(); } catch {}
+        clearTimeout(timer);
+        timer = setTimeout(() => { if (!cancelled) spinUp(); }, Math.min(1000 * 2 ** Math.min(retry++, 4), 16000));
+      });
+    };
+    spinUp();
+    return () => { cancelled = true; clearTimeout(timer); try { peer && peer.destroy(); } catch {} };
   }, [open, roomCode, hub]);
 
   // Prune phones that have stayed gone for a while — but only in the lobby.

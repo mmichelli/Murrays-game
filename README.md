@@ -40,6 +40,32 @@ Joining is a **one-tap shareable link** (`?room=CODE`). A free public [PeerJS](h
 
 The host (`createHostHub` in [`src/engine.js`](src/engine.js)) runs the single source of truth and broadcasts a **privacy-filtered view** to each device, so only the active clue-giver ever sees the word. Players send only *intents* (`claim turn`, `correct`, `resume`) and lobby actions (`set group`, `add group`, `rename group`, `add words`) — the host validates and applies them. The SDP signaling codec and in-memory loopback tests still cover the channel-level protocol regardless of how the handshake is brokered.
 
+### Staying connected
+
+Real phones drop the WebRTC link constantly — backgrounding, screen locks, signal blips. The app is built to ride through it:
+
+- **Stable seats.** Each device keeps a stable per-room id, so a phone that drops, reloads, or backgrounds **reclaims its exact seat** — same team, score, turn and words — instead of rejoining as a stranger.
+- **Auto-reconnect.** Clients retry with backoff, instantly on tab-refocus / network-return, and on a silent ICE failure (which doesn't always fire a clean close). A banner with a **Retry now** button shows while it's working.
+- **Seats survive drops.** The host marks a dropped player *offline* rather than deleting them; genuine lobby ghosts are pruned only after a grace period, never mid-game. The host also rebuilds its own broker link on a blip.
+- **Wall-clock timer.** The turn countdown is driven by real elapsed time, so a locked host screen can't freeze the clock.
+
+### Reliability across networks (STUN / TURN)
+
+WebRTC needs help connecting phones on different networks (mobile data, symmetric NATs). The app ships **STUN + free public TURN relays** ([`ICE` in `src/engine.js`](src/engine.js)) so the data channel can relay when a direct path is blocked.
+
+The free relays are best-effort and can be rate-limited. To drop in **your own dedicated TURN** without a rebuild, set a global before the app loads — e.g. in `index.html`:
+
+```html
+<script>
+  window.MRYSG_ICE = [
+    { urls: "stun:stun.l.google.com:19302" },
+    { urls: "turn:your.turn.example:3478", username: "USER", credential: "PASS" },
+  ];
+</script>
+```
+
+`resolveIce()` picks this up automatically and falls back to the bundled defaults when it's absent.
+
 ## Develop
 
 ```bash
@@ -53,15 +79,15 @@ npm run build      # production build
 
 The pure game engine and the **entire peer-to-peer message protocol** are unit-tested with [Vitest](https://vitest.dev):
 
-- [`test/engine.test.js`](test/engine.test.js) — the reducer, round progression, scoring, the word-privacy filter, and the signaling codec.
-- [`test/p2p.test.js`](test/p2p.test.js) — drives `createHostHub` over an in-memory loopback of a WebRTC data-channel pair: players connecting, picking groups, **adding and renaming groups, per-group counts and who's-in-which-group snapshots**, adding words (with de-dup), disconnecting, and — critically — a test that **proves the secret word never reaches any device except the active clue-giver's**, even over the wire.
+- [`test/engine.test.js`](test/engine.test.js) — the reducer, round progression, scoring, the wall-clock catch-up timer, keep-seat-on-disconnect, per-player word tallies, the word-privacy filter, the signaling codec, and the ICE/peer config.
+- [`test/p2p.test.js`](test/p2p.test.js) — drives `createHostHub` over an in-memory loopback of a WebRTC data-channel pair: players connecting, picking groups, **adding and renaming groups, per-group counts and who's-in-which-group snapshots**, adding words (with de-dup and per-person attribution), **a phone dropping and reclaiming its exact seat on reconnect**, and — critically — a test that **proves the secret word never reaches any device except the active clue-giver's**, even over the wire.
 
 Both run automatically in GitHub Actions on every push and pull request ([`.github/workflows/ci.yml`](.github/workflows/ci.yml)), and again before each Pages deploy ([`.github/workflows/deploy.yml`](.github/workflows/deploy.yml)).
 
 ```bash
 npm test
-# ✓ test/engine.test.js (16 tests)
-# ✓ test/p2p.test.js    (9 tests)
+# ✓ test/engine.test.js (23 tests)
+# ✓ test/p2p.test.js    (11 tests)
 ```
 
 ## Stack
