@@ -254,7 +254,7 @@ function HostApp({ onExit }) {
         <div className="fb-card fb-stack">
           <h1 className="fb-h1">You're hosting</h1>
           <label className="fb-label">Your name<input className="fb-input" value={name} onChange={(e) => setName(e.target.value)} maxLength={20} /></label>
-          <button className="fb-btn" disabled={!name.trim()} onClick={openRoom}>Open the room</button>
+          <button className="fb-btn" disabled={!name.trim()} onClick={openRoom}>Create the room</button>
         </div>
       );
   }
