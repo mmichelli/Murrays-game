@@ -55,6 +55,7 @@ const STRINGS = {
       tail: "Everyone scribbles words into one bowl, then teams race to make each other guess them.",
       harder: "Same words, all five rounds, each one harder:",
       openRoom: "Open a room", joinRoom: "Join a room",
+      slips: ["talk", "mime", "peek"],
       named: "Named after Murray, the varsity mate who first taught us to play.",
     },
     host: {
@@ -149,6 +150,7 @@ const STRINGS = {
       tail: "Alle skribler ord ned i én bolle, så kappes lagene om å få hverandre til å gjette dem.",
       harder: "Samme ord, alle fem runder, hver vanskeligere enn den forrige:",
       openRoom: "Åpne et rom", joinRoom: "Bli med i et rom",
+      slips: ["snakk", "mim", "kikk"],
       named: "Oppkalt etter Murray, studiekompisen som først lærte oss å spille.",
     },
     host: {

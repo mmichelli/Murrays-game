@@ -170,7 +170,7 @@ function Landing({ onPick }) {
   const t = useT();
   return (
     <div className="fb-card fb-stack fb-center">
-      <div className="fb-sliprow" aria-hidden="true"><span>praat</span><span>mime</span><span>loer</span></div>
+      <div className="fb-sliprow" aria-hidden="true">{(t("landing.slips") || []).map((w, i) => <span key={i}>{w}</span>)}</div>
       <p className="fb-muted">{t("landing.lead")} <b>Fishbowl</b>, <b>Celebrity</b>, <b>Salad Bowl</b>, <b>Monikers</b> {t("landing.or")} <b>{t("landing.hatGame")}</b>. {t("landing.tail")}</p>
       <div className="fb-roundlist">
         <div className="fb-roundlisttop">{t("landing.harder")}</div>
