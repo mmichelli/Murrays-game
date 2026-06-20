@@ -40,17 +40,17 @@ function Tr({ value, boldClass }) {
   if (Array.isArray(value)) return <>{value.map((seg, i) => seg && typeof seg === "object" ? <b key={i} className={boldClass}>{seg.b}</b> : <React.Fragment key={i}>{seg}</React.Fragment>)}</>;
   return <>{value}</>;
 }
-// The flag picker. A pill of flags; the live one is highlighted. Tapping a
-// flag switches language everywhere instantly and remembers the choice.
+// Compact language toggle: two-letter codes (EN / NO) in a brutalist
+// segmented pill; the live one is highlighted. Tapping switches language
+// everywhere instantly and remembers the choice.
 function LangSwitcher() {
   const { lang, setLang, t } = useLang();
   return (
     <div className="fb-langs" role="group" aria-label={t("lang.label")}>
       {LANGS.map((l) => (
         <button key={l.code} type="button" className={`fb-lang ${l.code === lang ? "on" : ""}`}
-          aria-pressed={l.code === lang} title={l.label} onClick={() => setLang(l.code)}>
-          <span className="fb-flag" aria-hidden="true">{l.flag}</span>
-          <span className="fb-langlabel">{l.label}</span>
+          aria-pressed={l.code === lang} title={l.label} aria-label={l.label} onClick={() => setLang(l.code)}>
+          {l.code.toUpperCase()}
         </button>
       ))}
     </div>
@@ -1140,15 +1140,14 @@ const CSS = `
 .fb-brand:active{transform:translate(1px,1px);text-shadow:2px 2px 0 var(--accent);}
 .fb-brand:focus-visible{outline:2.5px solid var(--ink);outline-offset:4px;border-radius:4px;}
 
-/* brand + language flag picker - neo-brutalist hard-edged toggles */
+/* brand + language toggle - neo-brutalist hard-edged EN/NO codes */
 .fb-topbar{display:flex;flex-direction:column;align-items:center;gap:11px;margin:6px 0 18px;}
 .fb-langs{display:inline-flex;gap:7px;}
-.fb-lang{display:inline-flex;align-items:center;gap:6px;background:var(--panel);border:2.5px solid var(--ink);border-radius:6px;padding:6px 12px;cursor:pointer;
-  font-family:'Space Mono',monospace;font-size:12px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;color:var(--muted);
+.fb-lang{display:inline-flex;align-items:center;justify-content:center;min-width:42px;background:var(--panel);border:2.5px solid var(--ink);border-radius:6px;padding:6px 10px;cursor:pointer;
+  font-family:'Space Mono',monospace;font-size:13px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);
   box-shadow:2px 2px 0 var(--ink);transition:transform .07s,box-shadow .07s;}
 .fb-lang:hover{transform:translate(-1px,-1px);box-shadow:3px 3px 0 var(--ink);color:var(--ink);}
 .fb-lang:active{transform:translate(2px,2px);box-shadow:0 0 0 var(--ink);}
-.fb-lang .fb-flag{font-size:16px;line-height:1;}
 .fb-lang.on{background:var(--ink);color:var(--paper);box-shadow:3px 3px 0 var(--accent);}
 .fb-lang.on:hover{transform:translate(-1px,-1px);box-shadow:4px 4px 0 var(--accent);color:var(--paper);}
 .fb-lang.on:active{transform:translate(3px,3px);box-shadow:0 0 0 var(--accent);}
