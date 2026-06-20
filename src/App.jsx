@@ -1,6 +1,6 @@
 import React, { useReducer, useEffect, useState, useRef, useMemo, useCallback } from "react";
 import {
-  ROUNDS, PALETTE, MIN_WORDS, MAX_TEAMS, TURN_SECONDS, DECK_SAMPLE_SIZE, sampleDeck,
+  ROUNDS, PALETTE, MIN_WORDS, MAX_TEAMS, TURN_SECONDS, WORDS_PER_PLAYER, sampleDeck,
   uid, initial, viewFor, createHostHub,
 } from "./engine.js";
 
@@ -47,6 +47,18 @@ function roomLinkFor(code) {
 }
 function readRoomParam() {
   try { return new URL(window.location.href).searchParams.get("room") || ""; } catch { return ""; }
+}
+// A stable per-room identity for this device, persisted so a reload or a
+// dropped-and-restored connection rejoins as the SAME player — keeping the
+// team, score and turn the host already has for us. Keyed by room so joining
+// a different room is a clean slate.
+function stableClientId(code) {
+  const key = "mrysg-cid-" + String(code).trim().toLowerCase();
+  try {
+    let v = localStorage.getItem(key);
+    if (!v) { v = uid() + uid() + uid(); localStorage.setItem(key, v); }
+    return v;
+  } catch { return uid() + uid() + uid(); }
 }
 // Adapt a PeerJS DataConnection to the channel shape the host hub speaks:
 // { readyState, send(str), onmessage(ev), onclose() }.
@@ -127,10 +139,32 @@ function HostApp({ onExit }) {
       peerRef.current = peer;
       peer.on("open", () => setPeerStatus("online"));
       peer.on("connection", (conn) => hub.attach(peerChannel(conn)));
+      // If the host phone backgrounds, the broker link can drop. Reclaim it
+      // (same room id) so players' reconnect attempts find the room again.
+      peer.on("disconnected", () => { if (!cancelled) { setPeerStatus("connecting"); try { peer.reconnect(); } catch {} } });
       peer.on("error", (err) => { if (err?.type === "unavailable-id") setPeerStatus("error"); });
     })();
     return () => { cancelled = true; try { peer && peer.destroy(); } catch {} };
   }, [open, roomCode, hub]);
+
+  // Prune phones that have stayed gone for a while — but only in the lobby.
+  // Mid-game a disconnected player keeps their seat (team, score, turn) so a
+  // blip or screen change never corrupts the round; they reclaim it on return.
+  const pruneTimers = useRef(new Map());
+  useEffect(() => {
+    const timers = pruneTimers.current;
+    if (state.phase !== "lobby") { timers.forEach(clearTimeout); timers.clear(); return; }
+    const live = new Set(state.players.map((p) => p.id));
+    state.players.forEach((p) => {
+      const ghost = !p.isHost && p.connected === false;
+      if (ghost && !timers.has(p.id)) {
+        timers.set(p.id, setTimeout(() => { timers.delete(p.id); dispatch({ type: "REMOVE_PLAYER", id: p.id }); }, 30000));
+      } else if (!ghost && timers.has(p.id)) {
+        clearTimeout(timers.get(p.id)); timers.delete(p.id);
+      }
+    });
+    timers.forEach((t, id) => { if (!live.has(id)) { clearTimeout(t); timers.delete(id); } });
+  }, [state.players, state.phase, dispatch]);
 
   const openRoom = () => {
     if (!name.trim()) return;
@@ -174,10 +208,13 @@ function HostApp({ onExit }) {
 function HostLobby({ state, dispatch, hostId, roomCode, peerStatus, onExit }) {
   const [tab, setTab] = useState(0);
   const color = (i) => PALETTE[i % PALETTE.length];
-  const teamsReady = state.teams.filter((t) => state.players.some((p) => p.teamId === t.id)).length >= 2;
-  const placed = state.players.every((p) => p.teamId);
+  // Gate on connected players only, so a phone that's briefly offline (kept in
+  // the room for continuity) doesn't block the start or count as "joined".
+  const here = state.players.filter((p) => p.connected !== false);
+  const teamsReady = state.teams.filter((t) => here.some((p) => p.teamId === t.id)).length >= 2;
+  const placed = here.every((p) => p.teamId);
   const bowlReady = state.bowl.length >= MIN_WORDS;
-  const clients = state.players.filter((p) => !p.isHost).length;
+  const clients = here.filter((p) => !p.isHost).length;
   const connected = clients >= 1;
   const canStart = teamsReady && placed && bowlReady && connected;
   const steps = [
@@ -190,7 +227,10 @@ function HostLobby({ state, dispatch, hostId, roomCode, peerStatus, onExit }) {
     id: t.id, name: t.name, color: color(i),
     count: state.players.filter((p) => p.teamId === t.id).length,
   }));
-  const roster = state.players.map((p) => ({ id: p.id, name: p.name, teamId: p.teamId, isHost: p.isHost }));
+  const roster = state.players.map((p) => ({
+    id: p.id, name: p.name, teamId: p.teamId, isHost: p.isHost,
+    connected: p.connected !== false, words: state.wordCounts[p.id] || 0,
+  }));
 
   return (
     <div className="fb-stack">
@@ -226,11 +266,9 @@ function HostLobby({ state, dispatch, hostId, roomCode, peerStatus, onExit }) {
       {tab === 2 && (
         <div className="fb-card fb-stack">
           <h2 className="fb-h2">The bowl</h2>
-          <p className="fb-muted"><b className="fb-num">{state.bowl.length}</b> in the bowl — everyone adds at once. Need {MIN_WORDS}+ to start.</p>
-          <WordAdder onAdd={(ws) => dispatch({ type: "ADD_WORDS", words: ws })} />
-          <button className="fb-btn fb-ghost" onClick={() => dispatch({ type: "ADD_WORDS", words: sampleDeck() })}>
-            🇿🇦 Deal {DECK_SAMPLE_SIZE} from Murray's deck
-          </button>
+          <p className="fb-muted"><b className="fb-num">{state.bowl.length}</b> in the bowl — everyone adds at once. Aim for {WORDS_PER_PLAYER} each.</p>
+          <WordAdder onAdd={(ws) => dispatch({ type: "ADD_WORDS", words: ws, by: hostId })}
+            count={state.wordCounts[hostId] || 0} target={WORDS_PER_PLAYER} />
         </div>
       )}
 
@@ -246,48 +284,132 @@ function HostLobby({ state, dispatch, hostId, roomCode, peerStatus, onExit }) {
   );
 }
 
-/* ============================= CLIENT ============================= */
+/* ============================= CLIENT ============================= *
+ * Resilient join: a phone that backgrounds, loses signal or reloads keeps
+ * trying to get back in (exponential backoff + an instant retry the moment
+ * the tab is shown again), and reclaims its exact seat via a stable id. The
+ * UI shows a "reconnecting" banner instead of a dead "reload to rejoin".
+ * ------------------------------------------------------------------ */
 function ClientApp({ onExit, initialRoom }) {
-  const connRef = useRef(null), peerRef = useRef(null);
   const [name, setName] = useState("");
   const [code, setCode] = useState(initialRoom || "");
   const [step, setStep] = useState("form"); // form | connecting | lobby
   const [status, setStatus] = useState("");
+  const [reconnecting, setReconnecting] = useState(false);
   const [lobby, setLobby] = useState(null), [view, setView] = useState(null);
+
+  // Imperative connection state lives in refs so the reconnect machinery
+  // isn't torn down or stale-closed by re-renders.
+  const aliveRef = useRef(false);          // are we meant to be in the room?
+  const peerRef = useRef(null), connRef = useRef(null);
+  const retryRef = useRef(0), timerRef = useRef(null);
+  const cidRef = useRef(null), nameRef = useRef(""), codeRef = useRef("");
 
   const send = (o) => { const c = connRef.current; if (c && c.open) { try { c.send(JSON.stringify(o)); } catch {} } };
 
-  // who am I, and which group am I in — read straight off the host's snapshot
-  const myId = lobby?.youId;
-  const myTeam = lobby?.roster.find((p) => p.id === myId)?.teamId ?? null;
+  // We know our own id (it's the stable cid we hand the host), so identity
+  // holds even when reconnecting mid-game before a fresh lobby snapshot.
+  const myId = cidRef.current;
+  const me = lobby?.roster.find((p) => p.id === myId);
+  const myTeam = me?.teamId ?? null;
+  const myWords = me?.words ?? 0;
+  const target = lobby?.wordsPerPlayer ?? WORDS_PER_PLAYER;
 
-  const join = async () => {
-    if (!name.trim() || !code.trim()) return;
-    setStep("connecting"); setStatus("Reaching the room…");
+  // Hoisted function declarations so the mutually-recursive reconnect helpers
+  // can reference each other freely; they read live values from refs, so no
+  // stale closures even though they're recreated each render.
+  function dialHost() {
+    if (!aliveRef.current || !peerRef.current) return;
+    setStatus("Reaching the room…");
+    let conn;
+    try { conn = peerRef.current.connect(peerIdFor(codeRef.current), { reliable: true }); }
+    catch { return scheduleRetry(); }
+    connRef.current = conn;
+    conn.on("open", () => {
+      retryRef.current = 0; setReconnecting(false); setStatus(""); setStep("lobby");
+      conn.send(JSON.stringify({ t: "hello", name: nameRef.current, cid: cidRef.current }));
+    });
+    conn.on("data", (d) => { try { const m = JSON.parse(d); if (m.t === "lobby") setLobby(m.lobby); else if (m.t === "view") setView(m.view); } catch {} });
+    conn.on("close", () => { if (aliveRef.current) scheduleRetry(); });
+    conn.on("error", () => { if (aliveRef.current) scheduleRetry(); });
+  }
+  async function spinUp() {
     const { default: Peer } = await import("peerjs");
-    const peer = new Peer({ debug: 1 }); peerRef.current = peer;
-    peer.on("open", () => {
-      const conn = peer.connect(peerIdFor(code), { reliable: true });
-      connRef.current = conn;
-      conn.on("open", () => { conn.send(JSON.stringify({ t: "hello", name: name.trim() })); setStatus("Connected."); setStep("lobby"); });
-      conn.on("data", (d) => { try { const m = JSON.parse(d); if (m.t === "lobby") setLobby(m.lobby); else if (m.t === "view") setView(m.view); } catch {} });
-      conn.on("close", () => setStatus("Disconnected. Reload the link to rejoin."));
-      conn.on("error", () => { setStatus("Couldn't reach that room. Check the code with the host."); setStep("form"); });
-    });
+    if (!aliveRef.current) return;
+    const peer = new Peer({ debug: 1 });
+    peerRef.current = peer;
+    peer.on("open", () => dialHost());
+    peer.on("disconnected", () => { if (aliveRef.current) { try { peer.reconnect(); } catch {} } });
     peer.on("error", (err) => {
-      setStatus(err?.type === "peer-unavailable"
-        ? "No room with that code — ask the host to re-share the link."
-        : "Connection trouble. Try again, or check your signal.");
-      setStep("form");
+      if (err?.type === "peer-unavailable") setStatus("Room not answering yet — retrying…");
+      if (aliveRef.current) scheduleRetry();
     });
+  }
+  // Tear down the live connection and re-establish a clean one after a backoff.
+  function scheduleRetry() {
+    if (!aliveRef.current) return;
+    setReconnecting(true);
+    clearTimeout(timerRef.current);
+    try { connRef.current?.close(); } catch {}
+    connRef.current = null;
+    const n = retryRef.current++;
+    const delay = Math.min(1000 * 2 ** Math.min(n, 3), 8000); // 1s,2s,4s,8s…
+    timerRef.current = setTimeout(() => {
+      if (!aliveRef.current) return;
+      try { peerRef.current?.destroy(); } catch {}
+      peerRef.current = null;
+      spinUp();
+    }, delay);
+  }
+  // Skip the backoff and reconnect now (tab shown, window refocused, net back).
+  function reconnectNow() {
+    if (!aliveRef.current) return;
+    if (connRef.current && connRef.current.open) return;
+    if (typeof document !== "undefined" && document.visibilityState && document.visibilityState !== "visible") return;
+    retryRef.current = 0; clearTimeout(timerRef.current);
+    try { peerRef.current?.destroy(); } catch {}
+    peerRef.current = null;
+    spinUp();
+  }
+  const join = () => {
+    if (!name.trim() || !code.trim()) return;
+    nameRef.current = name.trim(); codeRef.current = code.trim();
+    cidRef.current = stableClientId(codeRef.current);
+    aliveRef.current = true; retryRef.current = 0;
+    setStep("connecting"); setStatus("Reaching the room…");
+    spinUp();
   };
 
-  useEffect(() => () => { try { peerRef.current?.destroy(); } catch {} }, []);
+  // Bridge the latest reconnectNow into a stable listener so the effect
+  // subscribes once, not on every render.
+  const reconnectNowRef = useRef(reconnectNow);
+  reconnectNowRef.current = reconnectNow;
+  useEffect(() => {
+    const kick = () => reconnectNowRef.current();
+    document.addEventListener("visibilitychange", kick);
+    window.addEventListener("focus", kick);
+    window.addEventListener("online", kick);
+    return () => {
+      document.removeEventListener("visibilitychange", kick);
+      window.removeEventListener("focus", kick);
+      window.removeEventListener("online", kick);
+    };
+  }, []);
 
-  if (view && view.phase !== "lobby") return <GameView view={view} onIntent={(action) => send({ t: "intent", action })} />;
+  useEffect(() => () => {
+    aliveRef.current = false; clearTimeout(timerRef.current);
+    try { connRef.current?.close(); } catch {}
+    try { peerRef.current?.destroy(); } catch {}
+  }, []);
+
+  if (view && view.phase !== "lobby") return (<>
+    <ReconnectBanner show={reconnecting} />
+    <GameView view={view} onIntent={(action) => send({ t: "intent", action })} />
+  </>);
 
   return (
     <div className="fb-card fb-stack">
+      <ReconnectBanner show={reconnecting && step === "lobby"} />
       <h1 className="fb-h1">Join a room</h1>
       {step === "form" && (<>
         {initialRoom && <p className="fb-muted">Joining room <b className="fb-code">{initialRoom}</b> — just pop your name in.</p>}
@@ -297,7 +419,7 @@ function ClientApp({ onExit, initialRoom }) {
         {status && <p className="fb-err">{status}</p>}
         <button className="fb-btn fb-ghost" onClick={onExit}>Back</button>
       </>)}
-      {step === "connecting" && <p className="fb-muted">{status}</p>}
+      {step === "connecting" && <p className="fb-muted">{status || "Connecting…"}</p>}
       {step === "lobby" && lobby && (<>
         <div className="fb-roundtag">In the room</div>
         <h2 className="fb-h2">Groups · {lobby.teams.length} · tap to join</h2>
@@ -310,11 +432,15 @@ function ClientApp({ onExit, initialRoom }) {
         />
         <h2 className="fb-h2">The bowl</h2>
         <p className="fb-muted"><b className="fb-num">{lobby.bowlCount}</b> in the bowl. Everyone's adding at once.</p>
-        <WordAdder onAdd={(ws) => send({ t: "words", words: ws })} />
+        <WordAdder onAdd={(ws) => send({ t: "words", words: ws })} count={myWords} target={target} />
         <p className="fb-tiny">{myTeam ? "Waiting for the host to start…" : "Join a group to be ready."}</p>
       </>)}
     </div>
   );
+}
+function ReconnectBanner({ show }) {
+  if (!show) return null;
+  return <div className="fb-reconnect">⟳ Connection dropped — getting you back in…</div>;
 }
 
 /* ===================== shared in-game view ======================= */
@@ -454,8 +580,9 @@ function GroupBoard({ teams, roster, myId, myTeamId, onPick, onRename, onAddTeam
               {members(t.id).length === 0
                 ? <span className="fb-empty">— empty —</span>
                 : members(t.id).map((p) => (
-                  <span key={p.id} className="fb-chip" style={{ "--tc": t.color }}>
+                  <span key={p.id} className={`fb-chip ${p.connected === false ? "off" : ""}`} style={{ "--tc": t.color }}>
                     <span className="fb-dot" /> {p.name}{p.id === myId ? " (you)" : ""}{p.isHost ? " · host" : ""}
+                    {p.connected === false ? " · offline" : ""}
                   </span>
                 ))}
             </div>
@@ -519,17 +646,32 @@ function RoomShare({ code, status, connected }) {
     </div>
   );
 }
-function WordAdder({ onAdd }) {
-  const [draft, setDraft] = useState(""), [added, setAdded] = useState(0);
-  const add = () => { const w = draft.trim(); if (!w) return; onAdd([w]); setDraft(""); setAdded((n) => n + 1); };
+// `count` is how many words this person has already dropped in; `target` is
+// the soft per-player goal. The deck button only ever tops you up to the goal.
+function WordAdder({ onAdd, count = 0, target = 0 }) {
+  const [draft, setDraft] = useState("");
+  const add = () => { const w = draft.trim(); if (!w) return; onAdd([w]); setDraft(""); };
+  const remaining = target ? Math.max(0, target - count) : 0;
+  const done = target > 0 && remaining === 0;
   return (
     <div className="fb-stack">
+      {target > 0 && (
+        <div className={`fb-wordprog ${done ? "done" : ""}`}>
+          <span>Your words <b>{count}/{target}</b></span>
+          <span>{done ? "✓ that's plenty — add more if you like" : `${remaining} to go`}</span>
+        </div>
+      )}
       <div className="fb-row">
         <input className="fb-input" value={draft} placeholder="Type a word…" maxLength={40} autoFocus
           onChange={(e) => setDraft(e.target.value)} onKeyDown={(e) => e.key === "Enter" && add()} />
         <button className="fb-btn fb-add" onClick={add}>Add</button>
       </div>
-      {added > 0 && <p className="fb-tiny">Added {added} — hidden from everyone. Keep going.</p>}
+      {remaining > 0 && (
+        <button className="fb-btn fb-ghost" onClick={() => onAdd(sampleDeck(remaining))}>
+          🇿🇦 Fill my {remaining} from Murray's deck
+        </button>
+      )}
+      {count > 0 && <p className="fb-tiny">Your words stay hidden from everyone until they're in play.</p>}
     </div>
   );
 }
@@ -571,6 +713,12 @@ const CSS = `
 .fb-area.mono{font-family:'Space Mono',monospace;font-size:11px;color:var(--muted);}
 .fb-row{display:flex;gap:8px;}
 .fb-add{width:auto;padding-left:18px;padding-right:18px;}
+.fb-wordprog{display:flex;justify-content:space-between;align-items:center;gap:8px;font-family:'Space Mono',monospace;font-size:11px;letter-spacing:.04em;color:var(--muted);text-transform:uppercase;}
+.fb-wordprog b{font-family:Anton,sans-serif;font-weight:400;font-size:16px;color:var(--accent);vertical-align:-2px;margin:0 2px;}
+.fb-wordprog.done{color:var(--green);}.fb-wordprog.done b{color:var(--green);}
+.fb-reconnect{position:sticky;top:0;z-index:60;margin-bottom:12px;background:var(--amber);color:#fff;border-radius:8px;
+  padding:9px 13px;font-family:'Space Mono',monospace;font-weight:700;font-size:12px;letter-spacing:.04em;text-align:center;
+  box-shadow:0 6px 16px rgba(40,28,18,.22);}
 
 .fb-btn{background:var(--ink);color:var(--paper);border:none;border-radius:8px;padding:14px 16px;font-size:16px;font-weight:800;
   font-family:Archivo,sans-serif;cursor:pointer;width:100%;box-shadow:3px 3px 0 var(--accent);transition:transform .08s,box-shadow .08s;}
@@ -603,6 +751,8 @@ const CSS = `
 .fb-dot{width:11px;height:11px;border-radius:50%;background:var(--tc);flex:none;}
 .fb-rosterwrap{display:flex;flex-wrap:wrap;gap:7px;}
 .fb-chip{background:#fff;border:1.5px solid var(--line);border-radius:999px;padding:6px 11px;color:var(--ink);font-size:13px;display:inline-flex;align-items:center;gap:7px;}
+.fb-chip.off{opacity:.5;border-style:dashed;}
+.fb-chip.off .fb-dot{background:var(--muted);}
 .fb-teampick{display:flex;gap:8px;flex-wrap:wrap;}
 .fb-teambtn{flex:1 1 40%;background:#fff;border:1.5px solid var(--line);border-radius:8px;padding:12px;color:var(--muted);font-weight:800;font-family:inherit;font-size:15px;cursor:pointer;}
 .fb-teambtn.on{border-color:var(--tc);color:var(--tc);box-shadow:2px 2px 0 var(--tc);}

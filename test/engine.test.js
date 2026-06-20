@@ -2,7 +2,7 @@ import { describe, it, expect } from "vitest";
 import {
   reducer, initial, viewFor, lobbyFor, encode, decode, shuffle,
   ROUNDS, PALETTE, MIN_WORDS, MAX_TEAMS, TURN_SECONDS, MURRAY_DECK,
-  DECK_SAMPLE_SIZE, sampleDeck,
+  WORDS_PER_PLAYER, sampleDeck,
 } from "../src/engine.js";
 
 // Drive the reducer through a list of actions from a starting state.
@@ -32,10 +32,12 @@ describe("deck + constants", () => {
     expect(MURRAY_DECK).toContain("Braai");
     expect(MURRAY_DECK).toContain("Load shedding");
   });
-  it("sampleDeck deals a small unique subset, not the whole deck", () => {
-    const hand = sampleDeck();
-    expect(hand).toHaveLength(DECK_SAMPLE_SIZE);
-    expect(DECK_SAMPLE_SIZE).toBeLessThan(MURRAY_DECK.length);
+  it("sampleDeck deals a small unique subset sized to top a player up", () => {
+    expect(sampleDeck()).toHaveLength(WORDS_PER_PLAYER); // defaults to the per-player goal
+    const hand = sampleDeck(3);
+    expect(hand).toHaveLength(3);
+    expect(sampleDeck(0)).toHaveLength(0); // already at target → nothing to deal
+    expect(WORDS_PER_PLAYER).toBeLessThan(MURRAY_DECK.length);
     expect(new Set(hand).size).toBe(hand.length); // no dupes
     expect(hand.every((w) => MURRAY_DECK.includes(w))).toBe(true);
   });
@@ -62,6 +64,31 @@ describe("lobby reducer", () => {
       { type: "ADD_WORDS", words: ["Braai", "  biltong ", "BRAAI", "braai"] },
     ]);
     expect(s.bowl).toEqual(["Braai", "biltong"]);
+  });
+
+  it("tallies words per contributor, counting only what's actually added", () => {
+    let s = run(initial, [
+      { type: "ADD_WORDS", words: ["Braai", "Pap"], by: "ann" },
+      { type: "ADD_WORDS", words: ["braai", "Boerewors"], by: "ben" }, // "braai" is a dupe
+      { type: "ADD_WORDS", words: ["Anon"] },                          // no contributor
+    ]);
+    expect(s.wordCounts).toEqual({ ann: 2, ben: 1 });
+    // removing a player forgets their tally (their words stay in the bowl)
+    s = reducer(s, { type: "REMOVE_PLAYER", id: "ann" });
+    expect(s.wordCounts).toEqual({ ben: 1 });
+    expect(s.bowl).toContain("Braai");
+  });
+
+  it("keeps a player's seat on disconnect and restores it on reconnect", () => {
+    let s = run(initial, [
+      { type: "ADD_PLAYER", player: { id: "ann", name: "Ann", teamId: null } },
+    ]);
+    expect(s.players[0].connected).toBe(true);
+    s = reducer(s, { type: "SET_CONNECTED", id: "ann", connected: false });
+    expect(s.players).toHaveLength(1);              // not removed
+    expect(s.players[0].connected).toBe(false);
+    s = reducer(s, { type: "SET_CONNECTED", id: "ann", connected: true });
+    expect(s.players[0].connected).toBe(true);
   });
 
   it("unassigns players when their team is removed", () => {
@@ -205,7 +232,7 @@ describe("lobbyFor", () => {
     expect(lobby.bowlCount).toBe(2);
     expect(lobby.youId).toBe("p1");
     expect(lobby.started).toBe(false);
-    expect(lobby.roster).toEqual([{ id: "p1", name: "Ann", teamId: s.teams[0].id, isHost: false }]);
+    expect(lobby.roster).toEqual([{ id: "p1", name: "Ann", teamId: s.teams[0].id, isHost: false, connected: true, words: 0 }]);
     expect(lobby.teams[0].color).toBe(PALETTE[0]);
     expect(lobby.teams[0].count).toBe(1); // Ann is in the first group
     expect(lobby.teams[1].count).toBe(0);
