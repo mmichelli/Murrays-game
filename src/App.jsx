@@ -46,10 +46,10 @@ function Landing({ onPick }) {
     <div className="fb-card fb-stack fb-center">
       <div className="fb-sliprow" aria-hidden="true"><span>praat</span><span>mime</span><span>loer</span></div>
       <h1 className="fb-h1 fb-xl">Five rounds.<br />One bowl.</h1>
-      <p className="fb-muted">One phone opens the room. Everyone connects, drops words in the bowl together, then plays. The word only shows on whoever's giving clues. Howzit — let's jol.</p>
+      <p className="fb-muted">One phone opens the room. Everyone joins, fills the bowl together, then plays — the word only ever shows on the clue-giver's phone.</p>
       <button className="fb-btn" onClick={() => onPick("host")}>Open a room</button>
       <button className="fb-btn fb-ghost" onClick={() => onPick("client")}>Join a room</button>
-      <p className="fb-tiny">No server — phones connect directly. Same WiFi works best.</p>
+      <p className="fb-tiny">No server, no install — phones connect directly over WiFi.</p>
     </div>
   );
 }
@@ -136,15 +136,18 @@ function HostLobby({ state, dispatch, hostId, makeAnswer, onExit }) {
     <div className="fb-stack">
       <div className="fb-card fb-stack">
         <h1 className="fb-h1">Room lobby</h1>
-        <h2 className="fb-h2">Teams</h2>
-        {state.teams.map((t, i) => (
-          <div className="fb-teamrow" key={t.id} style={{ "--tc": color(i) }}>
-            <span className="fb-dot" />
+        <h2 className="fb-h2">Teams · tap yours</h2>
+        {state.teams.map((t, i) => {
+          const mine = state.players.find((p) => p.id === hostId)?.teamId === t.id;
+          return (
+          <div className={`fb-teamrow ${mine ? "on" : ""}`} key={t.id} style={{ "--tc": color(i) }}>
+            <button className="fb-dot tap" aria-label="Join team" onClick={() => dispatch({ type: "SET_TEAM", id: hostId, teamId: t.id })} />
             <input className="fb-input bare" value={t.name} maxLength={16} onChange={(e) => dispatch({ type: "RENAME_TEAM", id: t.id, name: e.target.value })} />
             <span className="fb-tcount">{state.players.filter((p) => p.teamId === t.id).length}</span>
             {state.teams.length > 2 && <button className="fb-x" onClick={() => dispatch({ type: "REMOVE_TEAM", id: t.id })}>×</button>}
           </div>
-        ))}
+          );
+        })}
         {state.teams.length < MAX_TEAMS && <button className="fb-btn fb-ghost" onClick={() => dispatch({ type: "ADD_TEAM" })}>+ add a team</button>}
         <div className="fb-rosterwrap">
           {state.players.map((p) => {
@@ -157,19 +160,12 @@ function HostLobby({ state, dispatch, hostId, makeAnswer, onExit }) {
       </div>
 
       <div className="fb-card fb-stack">
-        <h2 className="fb-h2">Your team</h2>
-        <TeamButtons teams={state.teams} colorFn={color} value={state.players.find((p) => p.id === hostId)?.teamId}
-          onPick={(teamId) => dispatch({ type: "SET_TEAM", id: hostId, teamId })} />
-      </div>
-
-      <div className="fb-card fb-stack">
         <h2 className="fb-h2">The bowl</h2>
-        <p className="fb-muted"><b className="fb-num">{state.bowl.length}</b> words in — everyone adds at once. Need {MIN_WORDS}+.</p>
+        <p className="fb-muted"><b className="fb-num">{state.bowl.length}</b> in the bowl — everyone adds at once. Need {MIN_WORDS}+ to start.</p>
         <WordAdder onAdd={(ws) => dispatch({ type: "ADD_WORDS", words: ws })} />
         <button className="fb-btn fb-ghost" onClick={() => dispatch({ type: "ADD_WORDS", words: MURRAY_DECK })}>
-          🇿🇦 Load Murray's deck — {MURRAY_DECK.length} SA student words
+          🇿🇦 Load Murray's deck — {MURRAY_DECK.length} words
         </button>
-        <p className="fb-tiny">Adds to whatever's already in. Start right away, or let people sprinkle their own on top.</p>
       </div>
 
       <div className="fb-card fb-stack">
@@ -322,7 +318,7 @@ function Transition({ v, onIntent }) {
   return (
     <div className="fb-modal" style={{ "--accent": r.accent }}>
       <div className="fb-card fb-stack fb-center">
-        <div className="fb-flash big">🚨 ROUND DONE MID-TURN 🚨</div>
+        <div className="fb-flash big">⏸ Round over mid-turn</div>
         <p className="fb-paused">Paused · <b>{v.timeLeft}s</b> left</p>
         <div className="fb-nextsetup">{r.icon} ROUND {r.n} IS <b>{r.name.toUpperCase()}</b><span>{r.setup}</span></div>
         <RoundDots n={r.n} />
@@ -380,7 +376,7 @@ function WordAdder({ onAdd }) {
           onChange={(e) => setDraft(e.target.value)} onKeyDown={(e) => e.key === "Enter" && add()} />
         <button className="fb-btn fb-add" onClick={add}>Add</button>
       </div>
-      {added > 0 && <p className="fb-tiny">You've added {added}. Keep going or pass the phone — words are hidden from everyone.</p>}
+      {added > 0 && <p className="fb-tiny">Added {added} — hidden from everyone. Keep going.</p>}
     </div>
   );
 }
@@ -455,8 +451,12 @@ const CSS = `
 .fb-sliprow span:nth-child(3){transform:rotate(-2deg);color:#7A4DE0;}
 
 .fb-teamrow{display:flex;align-items:center;gap:10px;background:#fff;border:1.5px solid var(--line);border-radius:8px;padding:5px 12px;}
+.fb-teamrow.on{border-color:var(--tc);box-shadow:2px 2px 0 var(--tc);}
 .fb-tcount{font-family:'Space Mono',monospace;color:var(--muted);font-size:13px;min-width:16px;text-align:right;}
 .fb-dot{width:11px;height:11px;border-radius:50%;background:var(--tc);flex:none;}
+.fb-dot.tap{width:18px;height:18px;padding:0;margin:0;cursor:pointer;appearance:none;-webkit-appearance:none;border:none;background:transparent;box-shadow:inset 0 0 0 2px #fff,inset 0 0 0 3.5px var(--tc);}
+.fb-teamrow.on .fb-dot.tap{background:var(--tc);}
+.fb-dot.tap:focus-visible{outline:2px solid var(--ink);outline-offset:2px;}
 .fb-rosterwrap{display:flex;flex-wrap:wrap;gap:7px;}
 .fb-chip{background:#fff;border:1.5px solid var(--line);border-radius:999px;padding:6px 11px;color:var(--ink);font-size:13px;display:inline-flex;align-items:center;gap:7px;}
 .fb-teampick{display:flex;gap:8px;flex-wrap:wrap;}
