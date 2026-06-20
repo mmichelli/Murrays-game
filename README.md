@@ -1,8 +1,13 @@
 # 🇿🇦 Murray's Game
 
+[![CI](https://github.com/mmichelli/Murrays-game/actions/workflows/ci.yml/badge.svg)](https://github.com/mmichelli/Murrays-game/actions/workflows/ci.yml)
+[![Deploy to GitHub Pages](https://github.com/mmichelli/Murrays-game/actions/workflows/deploy.yml/badge.svg)](https://github.com/mmichelli/Murrays-game/actions/workflows/deploy.yml)
+
 **A 5-round Fishbowl party game for South African students.** Runs entirely peer-to-peer in the browser — **no backend, no accounts, no install.**
 
 ▶ **Play it:** https://mmichelli.github.io/Murrays-game/
+
+**What you'll need:** a group of friends, one phone per player with a modern browser (Chrome, Safari, Edge), and everyone on the same WiFi. No app to download — just open the link.
 
 One phone opens the **room** (it's the authoritative game engine, timer, and hub) and gets a **shareable link + QR code**. Everyone else just scans or taps the link to join — no codes to copy. Then everyone drops words into a shared bowl in parallel, organises into groups, and plays — the secret word is only ever sent to the device of the player currently giving clues.
 

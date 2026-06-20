@@ -3,7 +3,23 @@
   "private": true,
   "version": "1.0.0",
   "type": "module",
-  "description": "Murray's Game — a 5-round Fishbowl party game for South African students. Peer-to-peer, no backend.",
+  "description": "Murray's Game — a 5-round Fishbowl party game for South African students. Plays peer-to-peer in the browser, no backend, no accounts, no install.",
+  "homepage": "https://mmichelli.github.io/Murrays-game/",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/mmichelli/Murrays-game.git"
+  },
+  "keywords": [
+    "fishbowl",
+    "party-game",
+    "webrtc",
+    "peer-to-peer",
+    "p2p",
+    "react",
+    "vite",
+    "south-africa",
+    "browser-game"
+  ],
   "scripts": {
     "dev": "vite",
     "build": "vite build",
