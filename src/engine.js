@@ -1,5 +1,5 @@
 /* ================================================================== *
- * MURRAY'S GAME — pure game engine + P2P hub (no React, no DOM).
+ * MURRAY'S GAME - pure game engine + P2P hub (no React, no DOM).
  *
  * Everything here is framework-agnostic so it can be unit-tested in
  * Node and reused by the React UI. The host runs `createHostHub`,
@@ -15,23 +15,23 @@ export const ROUNDS = [
     allowed: "Full-body acting and miming.", restrict: "Silence. No speaking, whispering or mouthing.", accent: "#3B6EA5" },
   { n: 3, name: "One Word",   icon: "💬", setup: "Stand in front of your team.",
     allowed: "Exactly one word, total, per card.", restrict: "Repeat it, but never change it or gesture.", accent: "#B15E86" },
-  { n: 4, name: "Hands Only", icon: "✋", setup: "Behind the couch — only hands show.",
+  { n: 4, name: "Hands Only", icon: "✋", setup: "Behind the couch - only hands show.",
     allowed: "Fingers, hands and forearms.", restrict: "Silence. Head, face, torso, legs hidden.", accent: "#3E8E72" },
-  { n: 5, name: "Face Only",  icon: "🤨", setup: "Peek over the couch — only your face.",
+  { n: 5, name: "Face Only",  icon: "🤨", setup: "Peek over the couch - only your face.",
     allowed: "Eyes, brows, nose, mouth, head tilts.", restrict: "Silence. Neck down stays hidden.", accent: "#6B5B9A" },
 ];
 export const PALETTE = ["#3B6EA5", "#B15E86", "#3E8E72", "#6B5B9A", "#C2683F", "#2E8B8B"];
 export const MIN_WORDS = 4, MAX_TEAMS = 6, TURN_SECONDS = 60;
 // How many upcoming cards the active clue-giver's device may hold, so a tap
 // flips instantly and a brief connection blip doesn't stall the turn. The
-// buffer lives ONLY in the active giver's view — never any other device.
+// buffer lives ONLY in the active giver's view - never any other device.
 export const LOOKAHEAD = 2;
 // Soft per-player target: everyone aims to drop this many words in the bowl.
-// It's a goal with progress, not a hard gate — the host can start whenever
+// It's a goal with progress, not a hard gate - the host can start whenever
 // there are enough words to actually play.
 export const WORDS_PER_PLAYER = 4;
 
-// Murray's deck — South African student / varsity culture. Lekker, actable
+// Murray's deck - South African student / varsity culture. Lekker, actable
 // across all five rounds, and recognizable to anyone who's survived res,
 // load shedding and a Friday jol. Kept broadly kid-safe. Big on purpose so
 // the bowl stays fresh game after game; players still add their own on top.
@@ -87,7 +87,7 @@ export const MURRAY_DECK = [
 ];
 
 // ICE servers handed to WebRTC. STUN alone only works when at least one peer
-// is directly reachable — between two phones on mobile data or behind
+// is directly reachable - between two phones on mobile data or behind
 // symmetric NATs it silently fails. The TURN relays let the data channel fall
 // back to relaying, which is what makes real phone-to-phone games connect.
 export const ICE = [
@@ -99,18 +99,18 @@ export const ICE = [
 ];
 // Resolve the ICE servers to use. A page can set `globalThis.MRYSG_ICE` to a
 // list of RTCIceServers (e.g. a dedicated TURN credential) to override the
-// free defaults at runtime — no rebuild or redeploy needed.
+// free defaults at runtime - no rebuild or redeploy needed.
 export function resolveIce() {
   const o = typeof globalThis !== "undefined" ? globalThis.MRYSG_ICE : null;
   return Array.isArray(o) && o.length ? o : ICE;
 }
-// Single source of truth for how we open a PeerJS peer — every `new Peer`
+// Single source of truth for how we open a PeerJS peer - every `new Peer`
 // MUST go through this so the ICE servers above actually get used.
 export const peerOptions = (extra = {}) => ({ debug: 1, config: { iceServers: resolveIce() }, ...extra });
 
 export const uid = () => Math.random().toString(36).slice(2, 8);
 export const shuffle = (a0) => { const a = [...a0]; for (let i = a.length - 1; i > 0; i--) { const j = (Math.random() * (i + 1)) | 0;[a[i], a[j]] = [a[j], a[i]]; } return a; };
-// Deal a fresh, random handful from Murray's deck — used to top a player up
+// Deal a fresh, random handful from Murray's deck - used to top a player up
 // to their target rather than dumping all ~225 words into the bowl at once.
 export const sampleDeck = (n = WORDS_PER_PLAYER) => shuffle(MURRAY_DECK).slice(0, Math.max(0, n));
 // Host-only bowl padding: up to n words from Murray's deck that aren't already
@@ -123,7 +123,7 @@ export const deckTopUp = (bowl = [], n = WORDS_PER_PLAYER) => {
 const zeros = (teams) => Object.fromEntries(teams.map((t) => [t.id, [0, 0, 0, 0, 0]]));
 
 // Signaling helpers. We pass plain RTCSessionDescriptionInit objects
-// ({type, sdp}) — every modern browser accepts these directly in
+// ({type, sdp}) - every modern browser accepts these directly in
 // setLocal/RemoteDescription, and it keeps encode/decode testable in Node.
 export const encode = (d) => btoa(JSON.stringify({ type: d.type, sdp: d.sdp }));
 export const decode = (c) => JSON.parse(atob(c.trim()));
@@ -210,7 +210,7 @@ export function reducer(state, a) {
 
     case "TICK": {
       if (!state.running) return state;
-      // `seconds` lets the host reconcile against the wall clock — if its
+      // `seconds` lets the host reconcile against the wall clock - if its
       // phone throttled or paused timers (screen lock, backgrounding), one
       // catch-up TICK drains the real elapsed time instead of a single second.
       const t = state.timeLeft - Math.max(1, Math.floor(a.seconds || 1));
@@ -235,7 +235,7 @@ export function reducer(state, a) {
   }
 }
 
-/* privacy filter — exactly what one device may see */
+/* privacy filter - exactly what one device may see */
 export function viewFor(s, pid) {
   const r = ROUNDS[s.currentRound - 1];
   const me = s.players.find((p) => p.id === pid);
@@ -252,7 +252,7 @@ export function viewFor(s, pid) {
     canCorrect: s.phase === "play" && s.running && isActive && !!s.activeCard,
     canResume: s.phase === "transition" && isActive,
     word: isActive && s.phase === "play" ? s.activeCard : null,
-    // Lookahead buffer — active giver only. Lets their phone flip instantly on
+    // Lookahead buffer - active giver only. Lets their phone flip instantly on
     // CORRECT and ride out a short drop. Empty near a round boundary (deck low),
     // so the client falls back to the host's authoritative transition there.
     nextWords: isActive && s.phase === "play" ? s.deck.slice(0, LOOKAHEAD) : [],
@@ -331,7 +331,7 @@ export function createHostHub({ onState, initialState } = {}) {
   function attach(ch) {
     ch.onmessage = (e) => { try { handle(ch, JSON.parse(e.data)); } catch {} };
     ch.onclose = () => {
-      // Only react if this is still the live channel for the seat — a
+      // Only react if this is still the live channel for the seat - a
       // reconnect swaps in a new channel, and we don't want the old one's
       // late close to knock the player back offline.
       if (ch._pid && channels.get(ch._pid) === ch) {

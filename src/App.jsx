@@ -5,7 +5,7 @@ import {
 } from "./engine.js";
 
 /* ================================================================== *
- * MURRAY'S GAME — a 5-round Fishbowl for South African students.
+ * MURRAY'S GAME - a 5-round Fishbowl for South African students.
  * P2P rooms, no backend.
  *
  * One HOST phone is the room (authoritative engine + timer + hub).
@@ -28,7 +28,7 @@ import {
 /* ----------------------- link-join plumbing ----------------------- *
  * The room is reached by a shareable link (?room=CODE) instead of
  * copy-pasting SDP blobs. PeerJS brokers ONLY the WebRTC handshake;
- * once connected, game data — words included — flows directly phone
+ * once connected, game data - words included - flows directly phone
  * to phone, so the word-privacy guarantee is unchanged.
  * ------------------------------------------------------------------ */
 const PEER_PREFIX = "mrysg-"; // namespaces our room ids on the shared broker
@@ -49,7 +49,7 @@ function readRoomParam() {
   try { return new URL(window.location.href).searchParams.get("room") || ""; } catch { return ""; }
 }
 // A stable per-room identity for this device, persisted so a reload or a
-// dropped-and-restored connection rejoins as the SAME player — keeping the
+// dropped-and-restored connection rejoins as the SAME player - keeping the
 // team, score and turn the host already has for us. Keyed by room so joining
 // a different room is a clean slate.
 function stableClientId(code) {
@@ -61,7 +61,7 @@ function stableClientId(code) {
   } catch { return uid() + uid() + uid(); }
 }
 // Reload persistence. The WebRTC link itself dies on reload, but PeerJS can
-// re-establish it through the broker — so if we remember the room (host code /
+// re-establish it through the broker - so if we remember the room (host code /
 // client name+code) and the in-progress game, a refresh silently re-dials and
 // drops everyone back exactly where they were. sessionStorage survives a
 // reload, is per-tab (so host + client tabs in one browser stay independent),
@@ -113,7 +113,7 @@ export default function App() {
 }
 const ROUND_GLOSS = {
   1: "say anything but the word",
-  2: "act it out — no talking",
+  2: "act it out, no talking",
   3: "just one word, out loud",
   4: "clues with your hands only",
   5: "clues with your face only",
@@ -124,7 +124,7 @@ function Landing({ onPick }) {
       <div className="fb-sliprow" aria-hidden="true"><span>praat</span><span>mime</span><span>loer</span></div>
       <p className="fb-muted">The legendary game you might know as <b>Fishbowl</b>, <b>Celebrity</b>, <b>Salad Bowl</b>, <b>Monikers</b> or <b>the Hat Game</b>. Everyone scribbles words into one bowl, then teams race to make each other guess them.</p>
       <div className="fb-roundlist">
-        <div className="fb-roundlisttop">Same words, all five rounds — each one harder:</div>
+        <div className="fb-roundlisttop">Same words, all five rounds, each one harder:</div>
         <ol className="fb-rounds">
           {ROUNDS.map((r) => (
             <li key={r.n} style={{ "--tc": r.accent }}>
@@ -137,7 +137,7 @@ function Landing({ onPick }) {
       </div>
       <button className="fb-btn" onClick={() => onPick("host")}>Open a room</button>
       <button className="fb-btn fb-ghost" onClick={() => onPick("client")}>Join a room</button>
-      <p className="fb-tiny">Named after Murray — the varsity mate who first taught us to play.</p>
+      <p className="fb-tiny">Named after Murray, the varsity mate who first taught us to play.</p>
     </div>
   );
 }
@@ -167,7 +167,7 @@ function HostApp({ onExit }) {
 
   // Host is the authoritative timer, driven by the wall clock so a screen
   // lock or backgrounded tab (which throttles/pauses setInterval) doesn't
-  // freeze the countdown — each tick drains the real seconds elapsed, and we
+  // freeze the countdown - each tick drains the real seconds elapsed, and we
   // reconcile the instant the tab is shown again.
   const lastTickRef = useRef(0);
   useEffect(() => {
@@ -237,7 +237,7 @@ function HostApp({ onExit }) {
     };
   }, [open, roomCode, hub]);
 
-  // Prune phones that have stayed gone for a while — but only in the lobby.
+  // Prune phones that have stayed gone for a while - but only in the lobby.
   // Mid-game a disconnected player keeps their seat (team, score, turn) so a
   // blip or screen change never corrupts the round; they reclaim it on return.
   const pruneTimers = useRef(new Map());
@@ -288,7 +288,7 @@ function HostApp({ onExit }) {
     {state.phase === "endgame" && (
       <div className="fb-hostbar">
         <span>Host</span>
-        <button onClick={() => dispatch({ type: "PLAY_AGAIN" })}>Play again — same bowl</button>
+        <button onClick={() => dispatch({ type: "PLAY_AGAIN" })}>Play again, same bowl</button>
       </div>
     )}
   </>);
@@ -355,7 +355,7 @@ function HostLobby({ state, dispatch, hostId, roomCode, peerStatus, onExit }) {
       {tab === 2 && (
         <div className="fb-card fb-stack">
           <h2 className="fb-h2">The bowl</h2>
-          <p className="fb-muted"><b className="fb-num">{state.bowl.length}</b> in the bowl — everyone adds at once. Aim for {WORDS_PER_PLAYER} each.</p>
+          <p className="fb-muted"><b className="fb-num">{state.bowl.length}</b> in the bowl. Everyone adds at once. Aim for {WORDS_PER_PLAYER} each.</p>
           <WordAdder onAdd={(ws) => dispatch({ type: "ADD_WORDS", words: ws, by: hostId })}
             count={state.wordCounts[hostId] || 0} target={WORDS_PER_PLAYER} />
           <DeckFill bowl={state.bowl} players={state.players.length}
@@ -379,7 +379,7 @@ function HostLobby({ state, dispatch, hostId, roomCode, peerStatus, onExit }) {
  * trying to get back in (exponential backoff, plus an instant automatic retry
  * the moment the browser says the tab is shown or the network is back), and
  * reclaims its exact seat via a stable id. The UI shows an offline/reconnecting
- * banner — no button to press — instead of a dead "reload to rejoin".
+ * banner - no button to press - instead of a dead "reload to rejoin".
  * ------------------------------------------------------------------ */
 function ClientApp({ onExit, initialRoom }) {
   // Restore what we need to silently re-dial after a reload.
@@ -427,7 +427,7 @@ function ClientApp({ onExit, initialRoom }) {
     conn.on("data", (d) => { try { const m = JSON.parse(d); if (m.t === "lobby") setLobby(m.lobby); else if (m.t === "view") setView(m.view); } catch {} });
     conn.on("close", () => { if (aliveRef.current) scheduleRetry(); });
     conn.on("error", () => { if (aliveRef.current) scheduleRetry(); });
-    // A clean "close" doesn't always fire when WebRTC dies — watch the ICE
+    // A clean "close" doesn't always fire when WebRTC dies - watch the ICE
     // state so a silent failure still kicks off a reconnect.
     conn.on("iceStateChanged", (st) => {
       if (!aliveRef.current) return;
@@ -443,7 +443,7 @@ function ClientApp({ onExit, initialRoom }) {
     peer.on("open", () => dialHost());
     peer.on("disconnected", () => { if (aliveRef.current) { try { peer.reconnect(); } catch {} } });
     peer.on("error", (err) => {
-      if (err?.type === "peer-unavailable") setStatus("Room not answering yet — retrying…");
+      if (err?.type === "peer-unavailable") setStatus("Room not answering yet, retrying…");
       if (aliveRef.current) scheduleRetry();
     });
   }
@@ -454,7 +454,7 @@ function ClientApp({ onExit, initialRoom }) {
     clearTimeout(timerRef.current);
     try { connRef.current?.close(); } catch {}
     connRef.current = null;
-    // Genuinely offline (airplane mode, wifi off)? Don't burn retries — the
+    // Genuinely offline (airplane mode, wifi off)? Don't burn retries - the
     // browser's 'online' event fires the moment the network is back and
     // reconnects us straight away. (onLine can be true with no real internet,
     // so when it's true we still retry on a backoff to cover that case.)
@@ -468,7 +468,7 @@ function ClientApp({ onExit, initialRoom }) {
       spinUp();
     }, delay);
   }
-  // Skip the backoff and reconnect now — triggered automatically when the tab
+  // Skip the backoff and reconnect now - triggered automatically when the tab
   // is shown again, the window refocuses, or the network comes back.
   function reconnectNow() {
     if (!aliveRef.current) return;
@@ -494,7 +494,7 @@ function ClientApp({ onExit, initialRoom }) {
   };
   // Auto-rejoin after a reload: we were in a room, so re-dial immediately
   // instead of showing the form. The stable cid means the host hands us back
-  // our exact seat — same team, score and turn.
+  // our exact seat - same team, score and turn.
   const startedRef = useRef(false);
   useEffect(() => {
     if (resuming && !startedRef.current) { startedRef.current = true; start(saved.name, saved.code); }
@@ -502,7 +502,7 @@ function ClientApp({ onExit, initialRoom }) {
 
   // Bridge the latest reconnectNow into a stable listener so the effect
   // subscribes once, not on every render. The browser tells us when the phone
-  // comes back — net returning, tab shown, window refocused — and we rejoin
+  // comes back - net returning, tab shown, window refocused - and we rejoin
   // automatically; no button to press.
   const reconnectNowRef = useRef(reconnectNow);
   reconnectNowRef.current = reconnectNow;
@@ -538,7 +538,7 @@ function ClientApp({ onExit, initialRoom }) {
       <ReconnectBanner show={reconnecting && step === "lobby"} online={online} />
       <h1 className="fb-h1">Join a room</h1>
       {step === "form" && (<>
-        {initialRoom && <p className="fb-muted">Joining room <b className="fb-code">{initialRoom}</b> — just pop your name in.</p>}
+        {initialRoom && <p className="fb-muted">Joining room <b className="fb-code">{initialRoom}</b>. Just pop your name in.</p>}
         <label className="fb-label">Your name<input className="fb-input" value={name} onChange={(e) => setName(e.target.value)} maxLength={20} autoFocus /></label>
         {!initialRoom && <label className="fb-label">Room code<input className="fb-input" value={code} onChange={(e) => setCode(e.target.value)} maxLength={12} placeholder="e.g. kx7m2p" /></label>}
         <button className="fb-btn" disabled={!name.trim() || !code.trim()} onClick={join}>Join room</button>
@@ -568,8 +568,8 @@ function ReconnectBanner({ show, online }) {
   return (
     <div className={`fb-reconnect ${online ? "" : "offline"}`}>
       {online
-        ? "⟳ Connection dropped — getting you back in…"
-        : "📡 You're offline — you'll rejoin automatically the moment you're back."}
+        ? "⟳ Connection dropped, getting you back in…"
+        : "📡 You're offline. You'll rejoin automatically the moment you're back."}
     </div>
   );
 }
@@ -594,7 +594,7 @@ function GameView({ view, onIntent, optimistic = false }) {
 // Optimistic word buffer for the active clue-giver. The host streams the
 // current word plus a short `nextWords` lookahead (giver-only). We display a
 // word `pending` steps ahead of the host's current card; each authoritative
-// advance consumes one pending step. Purely cosmetic — the host stays the sole
+// advance consumes one pending step. Purely cosmetic - the host stays the sole
 // authority for scoring and round progression, so the worst case is a brief
 // snap-back, never a wrong score or a leaked word.
 function useGiverWord(view, optimistic) {
@@ -656,7 +656,7 @@ function Ready({ v, onIntent }) {
       </>) : mineUp ? (
         <p className="fb-muted">Someone tap “I'll give clues” on their phone.</p>
       ) : myTeam ? (
-        <p className="fb-muted">Sit tight — your turn comes around.</p>
+        <p className="fb-muted">Sit tight, your turn comes around.</p>
       ) : (
         <p className="fb-muted">Watch the room.</p>
       )}
@@ -846,7 +846,7 @@ function GroupBoard({ teams, roster, myId, myTeamId, onPick, onRename, onAddTeam
             </div>
             <div className="fb-rosterwrap">
               {members(t.id).length === 0
-                ? <span className="fb-empty">— empty —</span>
+                ? <span className="fb-empty">empty</span>
                 : members(t.id).map((p) => (
                   <span key={p.id} className={`fb-chip ${p.connected === false ? "off" : ""}`} style={{ "--tc": t.color }}>
                     <span className="fb-dot" /> {p.name}{p.id === myId ? " (you)" : ""}{p.isHost ? " · host" : ""}
@@ -896,15 +896,15 @@ function RoomShare({ code, status, connected }) {
   };
   const canShare = typeof navigator !== "undefined" && !!navigator.share;
   const dot = status === "online" ? "var(--green)" : status === "error" ? "var(--red)" : "var(--amber)";
-  const msg = status === "online" ? "Room is live — share away"
-    : status === "error" ? "That code is taken — leave and re-open the room"
+  const msg = status === "online" ? "Room is live, share away"
+    : status === "error" ? "That code is taken. Leave and re-open the room"
     : "Opening the room…";
   return (
     <div className="fb-card fb-stack fb-center">
       <h2 className="fb-h2">Share the room</h2>
       <p className="fb-statusline"><span className="fb-statusdot" style={{ background: dot }} /> {msg}</p>
       {qr && <img className="fb-qr" src={qr} alt="QR code to join the room" width={200} height={200} />}
-      <p className="fb-tiny">Scan it — or send the link. Code: <b className="fb-code">{code}</b></p>
+      <p className="fb-tiny">Scan it, or send the link. Code: <b className="fb-code">{code}</b></p>
       <input className="fb-input mono fb-linkfield" readOnly value={link} onFocus={(e) => e.target.select()} aria-label="Room link" />
       <div className="fb-row fb-sharebtns">
         <button className="fb-btn" onClick={copy}>{copied ? "Copied ✓" : "Copy link"}</button>
@@ -926,7 +926,7 @@ function WordAdder({ onAdd, count = 0, target = 0 }) {
       {target > 0 && (
         <div className={`fb-wordprog ${done ? "done" : ""}`}>
           <span>Your words <b>{count}/{target}</b></span>
-          <span>{done ? "✓ that's plenty — add more if you like" : `${remaining} to go`}</span>
+          <span>{done ? "✓ that's plenty, add more if you like" : `${remaining} to go`}</span>
         </div>
       )}
       <div className="fb-row">
@@ -964,7 +964,7 @@ const CSS = `
 .fb-root{
   --paper:#E7EAED; --panel:#FBFCFD; --slip:#FFFFFF; --ink:#1A1D22; --muted:#6B7178; --line:#D6DBE0;
   --green:#1AA67E; --amber:#E8920A; --red:#E0322B;
-  /* a cool, neutral paper desk, lit unevenly — pages sit on top of it */
+  /* a cool, neutral paper desk, lit unevenly - pages sit on top of it */
   min-height:100vh;color:var(--ink);
   background-color:var(--paper);
   background-image:
@@ -974,7 +974,7 @@ const CSS = `
   background-attachment:fixed;
   font-family:Archivo,system-ui,sans-serif;display:flex;justify-content:center;padding:18px;box-sizing:border-box;position:relative;
 }
-/* fine fibre grain printed over the whole surface — paper, cards and all */
+/* fine fibre grain printed over the whole surface - paper, cards and all */
 .fb-root::before{content:"";position:fixed;inset:0;pointer-events:none;z-index:100;mix-blend-mode:multiply;opacity:.1;
   background-image:url("data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20width='180'%20height='180'%3E%3Cfilter%20id='n'%3E%3CfeTurbulence%20type='fractalNoise'%20baseFrequency='0.82'%20numOctaves='2'%20stitchTiles='stitch'/%3E%3CfeColorMatrix%20type='saturate'%20values='0'/%3E%3C/filter%3E%3Crect%20width='180'%20height='180'%20filter='url(%23n)'/%3E%3C/svg%3E");
   background-size:180px 180px;}
@@ -1087,7 +1087,7 @@ const CSS = `
 .fb-pip{width:8px;height:8px;border-radius:50%;border:1.6px solid var(--accent);box-sizing:border-box;}
 .fb-pip.on{background:var(--accent);}
 
-/* Time Timer-style disc — a depleting wedge on a clock face. */
+/* Time Timer-style disc - a depleting wedge on a clock face. */
 @property --fbdeg{syntax:'<angle>';inherits:false;initial-value:360deg;}
 .fb-vtimer{align-self:center;position:relative;width:min(264px,70vw);aspect-ratio:1;margin:2px auto;}
 .fb-vtimer.green{--zone:var(--green);}
@@ -1139,9 +1139,9 @@ const CSS = `
 .fb-standings{display:flex;flex-wrap:wrap;gap:14px;justify-content:center;width:100%;box-sizing:border-box;color:var(--muted);font-size:13px;background:rgba(20,26,34,.035);border-radius:8px;padding:11px 12px;margin-top:4px;font-family:'Space Mono',monospace;}
 .fb-standings b{font-family:Anton,sans-serif;font-weight:400;font-size:18px;vertical-align:-2px;}
 .fb-stand{display:inline-flex;align-items:center;gap:4px;}
-/* whose turn it is — an eyebrow above the big team name */
+/* whose turn it is - an eyebrow above the big team name */
 .fb-uplabel{font-family:'Space Mono',monospace;font-weight:700;font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:var(--muted);margin-bottom:-6px;}
-/* which side you're on — a persistent, colour-coded marker */
+/* which side you're on - a persistent, colour-coded marker */
 .fb-youbadge{display:inline-flex;align-items:center;gap:7px;align-self:center;font-family:'Space Mono',monospace;font-size:12px;
   color:var(--muted);background:#fff;border:1.5px solid var(--line);border-left:4px solid var(--tc);border-radius:999px;padding:5px 12px;}
 .fb-youbadge b{color:var(--tc);font-weight:700;}
