@@ -116,7 +116,7 @@ function Landing({ onPick }) {
     <div className="fb-card fb-stack fb-center">
       <div className="fb-sliprow" aria-hidden="true"><span>praat</span><span>mime</span><span>loer</span></div>
       <h1 className="fb-h1 fb-xl">Same words.<br />Five rounds.</h1>
-      <p className="fb-muted">The party game you might know as <b>Fishbowl</b>, <b>Celebrity</b>, <b>Salad Bowl</b>, <b>Monikers</b> or <b>the Hat Game</b>. Everyone scribbles words into one bowl, then teams race to make each other guess them — same words, five rounds, each one harder than the last.</p>
+      <p className="fb-muted">The legendary game you might know as <b>Fishbowl</b>, <b>Celebrity</b>, <b>Salad Bowl</b>, <b>Monikers</b> or <b>the Hat Game</b>. Everyone scribbles words into one bowl, then teams race to make each other guess them — same words, five rounds, each one harder than the last.</p>
       <button className="fb-btn" onClick={() => onPick("host")}>Open a room</button>
       <button className="fb-btn fb-ghost" onClick={() => onPick("client")}>Join a room</button>
       <p className="fb-tiny">Named after Murray — the varsity mate who first taught us to play.</p>
