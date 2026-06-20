@@ -125,64 +125,87 @@ function HostApp({ onExit }) {
 
 function HostLobby({ state, dispatch, hostId, makeAnswer, onExit }) {
   const [join, setJoin] = useState(""), [reply, setReply] = useState(""), [busy, setBusy] = useState(false), [err, setErr] = useState("");
+  const [tab, setTab] = useState(0);
   const color = (i) => PALETTE[i % PALETTE.length];
   const teamsReady = state.teams.filter((t) => state.players.some((p) => p.teamId === t.id)).length >= 2;
   const placed = state.players.every((p) => p.teamId);
-  const canStart = teamsReady && placed && state.bowl.length >= MIN_WORDS && state.players.length >= 2;
+  const bowlReady = state.bowl.length >= MIN_WORDS;
+  const connected = state.players.length >= 2;
+  const canStart = teamsReady && placed && bowlReady && connected;
+  const steps = [
+    { label: "Teams", done: teamsReady && placed },
+    { label: "Bowl", done: bowlReady },
+    { label: "Players", done: connected },
+  ];
 
   const gen = async () => { setErr(""); setBusy(true); try { setReply(await makeAnswer(join)); } catch { setErr("That join code didn't parse. Copy the whole thing."); } setBusy(false); };
 
   return (
     <div className="fb-stack">
-      <div className="fb-card fb-stack">
-        <h1 className="fb-h1">Room lobby</h1>
-        <h2 className="fb-h2">Teams · tap yours</h2>
-        {state.teams.map((t, i) => {
-          const mine = state.players.find((p) => p.id === hostId)?.teamId === t.id;
-          return (
-          <div className={`fb-teamrow ${mine ? "on" : ""}`} key={t.id} style={{ "--tc": color(i) }}>
-            <button className="fb-dot tap" aria-label="Join team" onClick={() => dispatch({ type: "SET_TEAM", id: hostId, teamId: t.id })} />
-            <input className="fb-input bare" value={t.name} maxLength={16} onChange={(e) => dispatch({ type: "RENAME_TEAM", id: t.id, name: e.target.value })} />
-            <span className="fb-tcount">{state.players.filter((p) => p.teamId === t.id).length}</span>
-            {state.teams.length > 2 && <button className="fb-x" onClick={() => dispatch({ type: "REMOVE_TEAM", id: t.id })}>×</button>}
-          </div>
-          );
-        })}
-        {state.teams.length < MAX_TEAMS && <button className="fb-btn fb-ghost" onClick={() => dispatch({ type: "ADD_TEAM" })}>+ add a team</button>}
-        <div className="fb-rosterwrap">
-          {state.players.map((p) => {
-            const ti = state.teams.findIndex((t) => t.id === p.teamId);
-            return <span key={p.id} className="fb-chip" style={{ "--tc": ti >= 0 ? color(ti) : "#9b927f" }}>
-              <span className="fb-dot" /> {p.name}{p.isHost ? " (you)" : ""}{p.teamId ? "" : " · no team"}
-            </span>;
+      <div className="fb-steps">
+        {steps.map((s, i) => (
+          <button key={s.label} className={`fb-step ${tab === i ? "on" : ""} ${s.done ? "done" : ""}`} onClick={() => setTab(i)}>
+            <span className="fb-stepn">{s.done ? "✓" : i + 1}</span>{s.label}
+          </button>
+        ))}
+      </div>
+
+      {tab === 0 && (
+        <div className="fb-card fb-stack">
+          <h2 className="fb-h2">Teams · tap yours</h2>
+          {state.teams.map((t, i) => {
+            const mine = state.players.find((p) => p.id === hostId)?.teamId === t.id;
+            return (
+            <div className={`fb-teamrow ${mine ? "on" : ""}`} key={t.id} style={{ "--tc": color(i) }}>
+              <button className="fb-dot tap" aria-label="Join team" onClick={() => dispatch({ type: "SET_TEAM", id: hostId, teamId: t.id })} />
+              <input className="fb-input bare" value={t.name} maxLength={16} onChange={(e) => dispatch({ type: "RENAME_TEAM", id: t.id, name: e.target.value })} />
+              <span className="fb-tcount">{state.players.filter((p) => p.teamId === t.id).length}</span>
+              {state.teams.length > 2 && <button className="fb-x" onClick={() => dispatch({ type: "REMOVE_TEAM", id: t.id })}>×</button>}
+            </div>
+            );
           })}
+          {state.teams.length < MAX_TEAMS && <button className="fb-btn fb-ghost" onClick={() => dispatch({ type: "ADD_TEAM" })}>+ add a team</button>}
+          <div className="fb-rosterwrap">
+            {state.players.map((p) => {
+              const ti = state.teams.findIndex((t) => t.id === p.teamId);
+              return <span key={p.id} className="fb-chip" style={{ "--tc": ti >= 0 ? color(ti) : "#9b927f" }}>
+                <span className="fb-dot" /> {p.name}{p.isHost ? " (you)" : ""}{p.teamId ? "" : " · no team"}
+              </span>;
+            })}
+          </div>
+          <button className="fb-btn fb-ghost" onClick={() => setTab(1)}>Next · the bowl →</button>
         </div>
-      </div>
+      )}
 
-      <div className="fb-card fb-stack">
-        <h2 className="fb-h2">The bowl</h2>
-        <p className="fb-muted"><b className="fb-num">{state.bowl.length}</b> in the bowl — everyone adds at once. Need {MIN_WORDS}+ to start.</p>
-        <WordAdder onAdd={(ws) => dispatch({ type: "ADD_WORDS", words: ws })} />
-        <button className="fb-btn fb-ghost" onClick={() => dispatch({ type: "ADD_WORDS", words: MURRAY_DECK })}>
-          🇿🇦 Load Murray's deck — {MURRAY_DECK.length} words
-        </button>
-      </div>
+      {tab === 1 && (
+        <div className="fb-card fb-stack">
+          <h2 className="fb-h2">The bowl</h2>
+          <p className="fb-muted"><b className="fb-num">{state.bowl.length}</b> in the bowl — everyone adds at once. Need {MIN_WORDS}+ to start.</p>
+          <WordAdder onAdd={(ws) => dispatch({ type: "ADD_WORDS", words: ws })} />
+          <button className="fb-btn fb-ghost" onClick={() => dispatch({ type: "ADD_WORDS", words: MURRAY_DECK })}>
+            🇿🇦 Load Murray's deck — {MURRAY_DECK.length} words
+          </button>
+          <button className="fb-btn fb-ghost" onClick={() => setTab(2)}>Next · add players →</button>
+        </div>
+      )}
 
-      <div className="fb-card fb-stack">
-        <h2 className="fb-h2">Connect a phone</h2>
-        <p className="fb-muted">Player taps <b>Join</b> and reads you their <b>join code</b>:</p>
-        <textarea className="fb-area" placeholder="Paste join code…" value={join} onChange={(e) => setJoin(e.target.value)} />
-        <button className="fb-btn" disabled={!join.trim() || busy} onClick={gen}>{busy ? "Working…" : "Generate reply code"}</button>
-        {err && <p className="fb-err">{err}</p>}
-        {reply && (<>
-          <p className="fb-muted">Read this <b>reply code</b> back to them:</p>
-          <CopyBox value={reply} />
-          <button className="fb-btn fb-ghost" onClick={() => { setJoin(""); setReply(""); }}>Connect another</button>
-        </>)}
-      </div>
+      {tab === 2 && (
+        <div className="fb-card fb-stack">
+          <h2 className="fb-h2">Connect a phone</h2>
+          <p className="fb-muted">Player taps <b>Join</b> and reads you their <b>join code</b>:</p>
+          <textarea className="fb-area" placeholder="Paste join code…" value={join} onChange={(e) => setJoin(e.target.value)} />
+          <button className="fb-btn" disabled={!join.trim() || busy} onClick={gen}>{busy ? "Working…" : "Generate reply code"}</button>
+          {err && <p className="fb-err">{err}</p>}
+          {reply && (<>
+            <p className="fb-muted">Read this <b>reply code</b> back to them:</p>
+            <CopyBox value={reply} />
+            <button className="fb-btn fb-ghost" onClick={() => { setJoin(""); setReply(""); }}>Connect another</button>
+          </>)}
+        </div>
+      )}
 
       <button className="fb-btn fb-big" disabled={!canStart} onClick={() => dispatch({ type: "START_GAME" })}>
-        {canStart ? "Start game" : state.bowl.length < MIN_WORDS ? `Add ${MIN_WORDS - state.bowl.length} more words` : !placed ? "Everyone needs a team" : "Need 2 teams with players"}
+        {canStart ? "Start game" : !bowlReady ? `Add ${MIN_WORDS - state.bowl.length} more words` : !placed ? "Everyone needs a team" : "Need 2 teams with players"}
       </button>
       <button className="fb-link" onClick={onExit}>Leave</button>
     </div>
@@ -449,6 +472,13 @@ const CSS = `
 .fb-sliprow span:nth-child(1){transform:rotate(-5deg);color:#FF6A3D;}
 .fb-sliprow span:nth-child(2){transform:rotate(3deg);color:#2C6EE6;}
 .fb-sliprow span:nth-child(3){transform:rotate(-2deg);color:#7A4DE0;}
+
+.fb-steps{display:flex;gap:8px;}
+.fb-step{flex:1;display:flex;align-items:center;justify-content:center;gap:7px;background:var(--panel);border:1.5px solid var(--line);border-radius:8px;padding:11px 6px;font-family:'Space Mono',monospace;font-weight:700;font-size:12px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);cursor:pointer;}
+.fb-step.on{border-color:var(--ink);color:var(--ink);box-shadow:3px 3px 0 var(--accent);}
+.fb-step.done{color:var(--ink);}
+.fb-stepn{display:inline-flex;align-items:center;justify-content:center;width:20px;height:20px;border-radius:50%;border:1.6px solid currentColor;font-size:11px;flex:none;}
+.fb-step.done .fb-stepn{background:var(--green);border-color:var(--green);color:#fff;}
 
 .fb-teamrow{display:flex;align-items:center;gap:10px;background:#fff;border:1.5px solid var(--line);border-radius:8px;padding:5px 12px;}
 .fb-teamrow.on{border-color:var(--tc);box-shadow:2px 2px 0 var(--tc);}
