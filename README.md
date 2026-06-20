@@ -46,6 +46,8 @@ There's **no signaling server**. Each join is a manual SDP exchange:
 
 After that, all game traffic flows over the data channel. The host (`createHostHub` in [`src/engine.js`](src/engine.js)) runs the single source of truth and broadcasts a **privacy-filtered view** to each device, so only the active clue-giver ever sees the word. Players send only *intents* (`claim turn`, `correct`, `resume`) — the host validates and applies them.
 
+To keep clue-giving snappy over the wire, the giver's view also carries a tiny **lookahead buffer** (the next couple of cards, giver-only — never watchers, never the other team). Their phone flips to the next word the instant they tap CORRECT and reconciles to the host afterwards, so latency or a brief blip doesn't stall the turn. It's purely cosmetic: the host stays the sole authority for scoring and round progression, and the buffer is naturally empty at a round boundary so the host always drives the transition.
+
 ## Develop
 
 ```bash
@@ -59,14 +61,14 @@ npm run build      # production build
 
 The pure game engine and the **entire peer-to-peer message protocol** are unit-tested with [Vitest](https://vitest.dev):
 
-- [`test/engine.test.js`](test/engine.test.js) — the reducer, round progression, scoring, the word-privacy filter, the signaling codec, and host-state rehydration + reconnect-by-id.
-- [`test/p2p.test.js`](test/p2p.test.js) — drives `createHostHub` over an in-memory loopback of a WebRTC data-channel pair: players connecting, picking teams, adding words (with de-dup), reloading back into the same slot, and — critically — a test that **proves the secret word never reaches any device except the active clue-giver's**, even over the wire.
+- [`test/engine.test.js`](test/engine.test.js) — the reducer, round progression, scoring, the word-privacy filter (including the giver-only lookahead buffer), the signaling codec, and host-state rehydration + reconnect-by-id.
+- [`test/p2p.test.js`](test/p2p.test.js) — drives `createHostHub` over an in-memory loopback of a WebRTC data-channel pair: players connecting, picking teams, adding words (with de-dup), reloading back into the same slot, and — critically — a test that **proves neither the secret word nor the lookahead buffer ever reaches any device except the active clue-giver's**, even over the wire.
 
 Both run automatically in GitHub Actions on every push and pull request ([`.github/workflows/ci.yml`](.github/workflows/ci.yml)), and again before each Pages deploy ([`.github/workflows/deploy.yml`](.github/workflows/deploy.yml)).
 
 ```bash
 npm test
-# ✓ test/engine.test.js (22 tests)
+# ✓ test/engine.test.js (24 tests)
 # ✓ test/p2p.test.js     (8 tests)
 ```
 

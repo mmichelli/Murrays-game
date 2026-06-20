@@ -22,6 +22,10 @@ export const ROUNDS = [
 ];
 export const PALETTE = ["#2C6EE6", "#E8348B", "#1AA67E", "#7A4DE0", "#FF6A3D", "#0E8C9B"];
 export const MIN_WORDS = 4, MAX_TEAMS = 6, TURN_SECONDS = 60;
+// How many upcoming cards the active clue-giver's device may hold, so a tap
+// flips instantly and a brief connection blip doesn't stall the turn. The
+// buffer lives ONLY in the active giver's view — never any other device.
+export const LOOKAHEAD = 2;
 
 // Murray's deck — South African student / varsity culture. Lekker, actable
 // across all five rounds, and recognizable to anyone who's survived res,
@@ -167,6 +171,10 @@ export function viewFor(s, pid) {
     canCorrect: s.phase === "play" && s.running && isActive && !!s.activeCard,
     canResume: s.phase === "transition" && isActive,
     word: isActive && s.phase === "play" ? s.activeCard : null,
+    // Lookahead buffer — active giver only. Lets their phone flip instantly on
+    // CORRECT and ride out a short drop. Empty near a round boundary (deck low),
+    // so the client falls back to the host's authoritative transition there.
+    nextWords: isActive && s.phase === "play" ? s.deck.slice(0, LOOKAHEAD) : [],
     inherited: isActive && s.phase === "ready" && !!s.activeCard && s.turnNumber > 1,
   };
 }
