@@ -1,6 +1,6 @@
 import React, { useReducer, useEffect, useLayoutEffect, useState, useRef, useMemo, useCallback } from "react";
 import {
-  ROUNDS, PALETTE, MIN_WORDS, MAX_TEAMS, TURN_SECONDS, WORDS_PER_PLAYER, sampleDeck,
+  ROUNDS, PALETTE, MIN_WORDS, MAX_TEAMS, TURN_SECONDS, WORDS_PER_PLAYER, sampleDeck, deckTopUp,
   uid, initial, viewFor, createHostHub, peerOptions,
 } from "./engine.js";
 
@@ -340,6 +340,8 @@ function HostLobby({ state, dispatch, hostId, roomCode, peerStatus, onExit }) {
           <p className="fb-muted"><b className="fb-num">{state.bowl.length}</b> in the bowl — everyone adds at once. Aim for {WORDS_PER_PLAYER} each.</p>
           <WordAdder onAdd={(ws) => dispatch({ type: "ADD_WORDS", words: ws, by: hostId })}
             count={state.wordCounts[hostId] || 0} target={WORDS_PER_PLAYER} />
+          <DeckFill bowl={state.bowl} players={state.players.length}
+            onAdd={(ws) => dispatch({ type: "ADD_WORDS", words: ws })} />
         </div>
       )}
 
@@ -903,6 +905,21 @@ function WordAdder({ onAdd, count = 0, target = 0 }) {
       )}
       {count > 0 && <p className="fb-tiny">Your words stay hidden from everyone until they're in play.</p>}
     </div>
+  );
+}
+// Host-only: pad a thin bowl straight from Murray's deck. Tops up toward a
+// "everyone did their share" target (players × WORDS_PER_PLAYER); once there,
+// it keeps offering a chunk so the host can build as big a bowl as they like.
+function DeckFill({ bowl, players, onAdd }) {
+  const target = Math.max(MIN_WORDS, players * WORDS_PER_PLAYER);
+  const need = Math.max(0, target - bowl.length);
+  const amount = need > 0 ? need : 10;
+  const words = useMemo(() => deckTopUp(bowl, amount), [bowl, amount]);
+  if (words.length === 0) return <p className="fb-tiny">The whole deck is already in the bowl.</p>;
+  return (
+    <button className="fb-btn fb-ghost" onClick={() => onAdd(words)}>
+      🇿🇦 {need > 0 ? `Fill the bowl from Murray's deck (+${words.length})` : `Add ${words.length} more from Murray's deck`}
+    </button>
   );
 }
 /* ============================== CSS ============================== */

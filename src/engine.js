@@ -113,6 +113,13 @@ export const shuffle = (a0) => { const a = [...a0]; for (let i = a.length - 1; i
 // Deal a fresh, random handful from Murray's deck — used to top a player up
 // to their target rather than dumping all ~225 words into the bowl at once.
 export const sampleDeck = (n = WORDS_PER_PLAYER) => shuffle(MURRAY_DECK).slice(0, Math.max(0, n));
+// Host-only bowl padding: up to n words from Murray's deck that aren't already
+// in `bowl` (case-insensitive), shuffled. Lets the host fill a thin bowl
+// straight from the library instead of waiting on players to add their share.
+export const deckTopUp = (bowl = [], n = WORDS_PER_PLAYER) => {
+  const have = new Set(bowl.map((w) => String(w).toLowerCase()));
+  return shuffle(MURRAY_DECK.filter((w) => !have.has(w.toLowerCase()))).slice(0, Math.max(0, n));
+};
 const zeros = (teams) => Object.fromEntries(teams.map((t) => [t.id, [0, 0, 0, 0, 0]]));
 
 // Signaling helpers. We pass plain RTCSessionDescriptionInit objects

@@ -2,7 +2,7 @@ import { describe, it, expect } from "vitest";
 import {
   reducer, initial, viewFor, lobbyFor, encode, decode, shuffle,
   ROUNDS, PALETTE, MIN_WORDS, MAX_TEAMS, TURN_SECONDS, MURRAY_DECK,
-  WORDS_PER_PLAYER, sampleDeck, ICE, peerOptions, LOOKAHEAD,
+  WORDS_PER_PLAYER, sampleDeck, deckTopUp, ICE, peerOptions, LOOKAHEAD,
 } from "../src/engine.js";
 
 // Drive the reducer through a list of actions from a starting state.
@@ -45,6 +45,16 @@ describe("deck + constants", () => {
     expect(ROUNDS).toHaveLength(5);
     expect(PALETTE.length).toBeGreaterThanOrEqual(MAX_TEAMS);
     expect(TURN_SECONDS).toBe(60);
+  });
+  it("deckTopUp fills the bowl from the library without re-adding existing words", () => {
+    const bowl = ["Braai", "LOAD SHEDDING"]; // mixed case vs the deck's own entries
+    const top = deckTopUp(bowl, 5);
+    expect(top).toHaveLength(5);
+    expect(new Set(top.map((w) => w.toLowerCase())).size).toBe(5);   // all unique
+    expect(top.every((w) => MURRAY_DECK.includes(w))).toBe(true);    // all from the library
+    const have = new Set(bowl.map((w) => w.toLowerCase()));
+    expect(top.some((w) => have.has(w.toLowerCase()))).toBe(false);  // never a duplicate of the bowl
+    expect(deckTopUp([], MURRAY_DECK.length + 50)).toHaveLength(MURRAY_DECK.length); // capped at the deck
   });
 });
 
