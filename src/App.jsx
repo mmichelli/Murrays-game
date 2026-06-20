@@ -319,9 +319,10 @@ function HostLobby({ state, dispatch, hostId, roomCode, peerStatus, onExit }) {
 
 /* ============================= CLIENT ============================= *
  * Resilient join: a phone that backgrounds, loses signal or reloads keeps
- * trying to get back in (exponential backoff + an instant retry the moment
- * the tab is shown again), and reclaims its exact seat via a stable id. The
- * UI shows a "reconnecting" banner instead of a dead "reload to rejoin".
+ * trying to get back in (exponential backoff, plus an instant automatic retry
+ * the moment the browser says the tab is shown or the network is back), and
+ * reclaims its exact seat via a stable id. The UI shows an offline/reconnecting
+ * banner — no button to press — instead of a dead "reload to rejoin".
  * ------------------------------------------------------------------ */
 function ClientApp({ onExit, initialRoom }) {
   const [name, setName] = useState("");
@@ -329,6 +330,7 @@ function ClientApp({ onExit, initialRoom }) {
   const [step, setStep] = useState("form"); // form | connecting | lobby
   const [status, setStatus] = useState("");
   const [reconnecting, setReconnecting] = useState(false);
+  const [online, setOnline] = useState(typeof navigator === "undefined" ? true : navigator.onLine);
   const [lobby, setLobby] = useState(null), [view, setView] = useState(null);
 
   // Imperative connection state lives in refs so the reconnect machinery
@@ -392,6 +394,11 @@ function ClientApp({ onExit, initialRoom }) {
     clearTimeout(timerRef.current);
     try { connRef.current?.close(); } catch {}
     connRef.current = null;
+    // Genuinely offline (airplane mode, wifi off)? Don't burn retries — the
+    // browser's 'online' event fires the moment the network is back and
+    // reconnects us straight away. (onLine can be true with no real internet,
+    // so when it's true we still retry on a backoff to cover that case.)
+    if (typeof navigator !== "undefined" && navigator.onLine === false) return;
     const n = retryRef.current++;
     const delay = Math.min(1000 * 2 ** Math.min(n, 3), 8000); // 1s,2s,4s,8s…
     timerRef.current = setTimeout(() => {
@@ -401,7 +408,8 @@ function ClientApp({ onExit, initialRoom }) {
       spinUp();
     }, delay);
   }
-  // Skip the backoff and reconnect now (tab shown, window refocused, net back).
+  // Skip the backoff and reconnect now — triggered automatically when the tab
+  // is shown again, the window refocuses, or the network comes back.
   function reconnectNow() {
     if (!aliveRef.current) return;
     if (connRef.current && connRef.current.open) return;
@@ -421,18 +429,24 @@ function ClientApp({ onExit, initialRoom }) {
   };
 
   // Bridge the latest reconnectNow into a stable listener so the effect
-  // subscribes once, not on every render.
+  // subscribes once, not on every render. The browser tells us when the phone
+  // comes back — net returning, tab shown, window refocused — and we rejoin
+  // automatically; no button to press.
   const reconnectNowRef = useRef(reconnectNow);
   reconnectNowRef.current = reconnectNow;
   useEffect(() => {
     const kick = () => reconnectNowRef.current();
+    const goOnline = () => { setOnline(true); reconnectNowRef.current(); };
+    const goOffline = () => setOnline(false);
     document.addEventListener("visibilitychange", kick);
     window.addEventListener("focus", kick);
-    window.addEventListener("online", kick);
+    window.addEventListener("online", goOnline);
+    window.addEventListener("offline", goOffline);
     return () => {
       document.removeEventListener("visibilitychange", kick);
       window.removeEventListener("focus", kick);
-      window.removeEventListener("online", kick);
+      window.removeEventListener("online", goOnline);
+      window.removeEventListener("offline", goOffline);
     };
   }, []);
 
@@ -443,13 +457,13 @@ function ClientApp({ onExit, initialRoom }) {
   }, []);
 
   if (view && view.phase !== "lobby") return (<>
-    <ReconnectBanner show={reconnecting} onRetry={reconnectNow} />
+    <ReconnectBanner show={reconnecting} online={online} />
     <GameView view={view} onIntent={(action) => send({ t: "intent", action })} />
   </>);
 
   return (
     <div className="fb-card fb-stack">
-      <ReconnectBanner show={reconnecting && step === "lobby"} onRetry={reconnectNow} />
+      <ReconnectBanner show={reconnecting && step === "lobby"} online={online} />
       <h1 className="fb-h1">Join a room</h1>
       {step === "form" && (<>
         {initialRoom && <p className="fb-muted">Joining room <b className="fb-code">{initialRoom}</b> — just pop your name in.</p>}
@@ -478,12 +492,13 @@ function ClientApp({ onExit, initialRoom }) {
     </div>
   );
 }
-function ReconnectBanner({ show, onRetry }) {
+function ReconnectBanner({ show, online }) {
   if (!show) return null;
   return (
-    <div className="fb-reconnect">
-      <span>⟳ Connection dropped — getting you back in…</span>
-      {onRetry && <button className="fb-reconnectbtn" onClick={onRetry}>Retry now</button>}
+    <div className={`fb-reconnect ${online ? "" : "offline"}`}>
+      {online
+        ? "⟳ Connection dropped — getting you back in…"
+        : "📡 You're offline — you'll rejoin automatically the moment you're back."}
     </div>
   );
 }
@@ -763,10 +778,8 @@ const CSS = `
 .fb-wordprog.done{color:var(--green);}.fb-wordprog.done b{color:var(--green);}
 .fb-reconnect{position:sticky;top:0;z-index:60;margin-bottom:12px;background:var(--amber);color:#fff;border-radius:8px;
   padding:9px 13px;font-family:'Space Mono',monospace;font-weight:700;font-size:12px;letter-spacing:.04em;text-align:center;
-  box-shadow:0 6px 16px rgba(40,28,18,.22);display:flex;align-items:center;justify-content:center;gap:10px;flex-wrap:wrap;}
-.fb-reconnectbtn{background:rgba(255,255,255,.22);border:1.5px solid #fff;color:#fff;border-radius:6px;padding:5px 10px;
-  font-family:inherit;font-weight:700;font-size:11px;letter-spacing:.04em;cursor:pointer;text-transform:uppercase;}
-.fb-reconnectbtn:hover{background:rgba(255,255,255,.34);}
+  box-shadow:0 6px 16px rgba(40,28,18,.22);}
+.fb-reconnect.offline{background:#6E6557;}
 
 .fb-btn{background:var(--ink);color:var(--paper);border:none;border-radius:8px;padding:14px 16px;font-size:16px;font-weight:800;
   font-family:Archivo,sans-serif;cursor:pointer;width:100%;box-shadow:3px 3px 0 var(--accent);transition:transform .08s,box-shadow .08s;}
