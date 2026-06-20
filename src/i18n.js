@@ -49,7 +49,7 @@ export function saveLang(code) { try { localStorage.setItem(LS_KEY, code); } cat
  * ------------------------------------------------------------------ */
 const STRINGS = {
   en: {
-    common: { leave: "← Leave to start", yourName: "Your name", add: "Add" },
+    common: { home: "Back to start", yourName: "Your name", add: "Add" },
     landing: {
       lead: "The legendary game you might know as", or: "or", hatGame: "the Hat Game",
       tail: "Everyone scribbles words into one bowl, then teams race to make each other guess them.",
@@ -143,7 +143,7 @@ const STRINGS = {
     },
   },
   no: {
-    common: { leave: "← Forlat og start på nytt", yourName: "Ditt navn", add: "Legg til" },
+    common: { home: "Tilbake til start", yourName: "Ditt navn", add: "Legg til" },
     landing: {
       lead: "Det legendariske spillet du kanskje kjenner som", or: "eller", hatGame: "Hatteleken",
       tail: "Alle skribler ord ned i én bolle, så kappes lagene om å få hverandre til å gjette dem.",

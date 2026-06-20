@@ -155,10 +155,9 @@ function AppInner() {
       <style>{CSS}</style>
       <div className="fb-shell">
         <div className="fb-topbar">
-          <div className="fb-brand">MURRAY'S GAME</div>
+          <button type="button" className="fb-brand" onClick={() => setRole(null)} title={t("common.home")} aria-label={t("common.home")}>MURRAY'S GAME</button>
           <LangSwitcher />
         </div>
-        {role && <div className="fb-topbackwrap"><button className="fb-topback" onClick={() => setRole(null)}>{t("common.leave")}</button></div>}
         {!role && <Landing onPick={setRole} />}
         {role === "host" && <HostApp onExit={() => setRole(null)} />}
         {role === "client" && <ClientApp onExit={() => setRole(null)} initialRoom={initialRoom} />}
@@ -1046,7 +1045,11 @@ const CSS = `
   background-image:url("data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20width='180'%20height='180'%3E%3Cfilter%20id='n'%3E%3CfeTurbulence%20type='fractalNoise'%20baseFrequency='0.82'%20numOctaves='2'%20stitchTiles='stitch'/%3E%3CfeColorMatrix%20type='saturate'%20values='0'/%3E%3C/filter%3E%3Crect%20width='180'%20height='180'%20filter='url(%23n)'/%3E%3C/svg%3E");
   background-size:180px 180px;}
 .fb-shell{width:100%;max-width:540px;position:relative;z-index:1;}
-.fb-brand{font-family:Anton,'Arial Narrow',sans-serif;letter-spacing:.03em;font-size:clamp(32px,9.5vw,46px);line-height:.9;text-align:center;width:max-content;max-width:100%;margin:0;color:var(--ink);text-transform:uppercase;text-shadow:3px 3px 0 var(--accent);}
+.fb-brand{font-family:Anton,'Arial Narrow',sans-serif;letter-spacing:.03em;font-size:clamp(32px,9.5vw,46px);line-height:.9;text-align:center;width:max-content;max-width:100%;margin:0;color:var(--ink);text-transform:uppercase;text-shadow:3px 3px 0 var(--accent);
+  background:none;border:none;padding:0;cursor:pointer;display:block;transition:text-shadow .08s,transform .08s;}
+.fb-brand:hover{text-shadow:4px 4px 0 var(--accent);}
+.fb-brand:active{transform:translate(1px,1px);text-shadow:2px 2px 0 var(--accent);}
+.fb-brand:focus-visible{outline:2.5px solid var(--ink);outline-offset:4px;border-radius:4px;}
 
 /* brand + language flag picker */
 .fb-topbar{display:flex;flex-direction:column;align-items:center;gap:11px;margin:6px 0 18px;}
@@ -1244,10 +1247,6 @@ const CSS = `
 .fb-hostbar{display:flex;gap:8px;align-items:center;justify-content:center;flex-wrap:wrap;margin-top:14px;color:var(--muted);font-size:11px;font-family:'Space Mono',monospace;text-transform:uppercase;letter-spacing:.1em;}
 .fb-hostbar button{background:var(--panel);border:2px solid var(--ink);color:var(--ink);border-radius:6px;padding:7px 11px;font-size:11px;cursor:pointer;font-family:inherit;text-transform:uppercase;letter-spacing:.08em;}
 .fb-hostbar button:hover{color:var(--ink);border-color:var(--ink);box-shadow:2px 2px 0 var(--ink);}
-.fb-topbackwrap{display:flex;justify-content:center;margin:-4px 0 16px;}
-.fb-topback{background:var(--panel);border:2px solid var(--ink);color:var(--ink);border-radius:6px;padding:7px 14px;
-  font-family:'Space Mono',monospace;font-size:11px;letter-spacing:.1em;text-transform:uppercase;cursor:pointer;}
-.fb-topback:hover{color:var(--ink);border-color:var(--ink);box-shadow:2px 2px 0 var(--ink);}
 
 @media (prefers-reduced-motion:reduce){
   .fb-vtimer.pulse{animation:none;}.fb-vt-disc{transition:none;}.fb-btn{transition:none;}.fb-slip{animation:none;}
