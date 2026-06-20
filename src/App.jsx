@@ -592,15 +592,16 @@ function WordAdder({ onAdd }) {
 const CSS = `
 @import url('https://fonts.googleapis.com/css2?family=Anton&family=Archivo:wght@400;600;800&family=Space+Mono:wght@400;700&display=swap');
 .fb-root{
-  --paper:#E9E3D3; --panel:#F3EEE0; --slip:#FBF7EC; --ink:#221C18; --muted:#8A8173; --line:#D7CFBC;
+  --paper:#E9E3D3; --panel:#FAF7F0; --slip:#FFFDF7; --ink:#221C18; --muted:#8A8173; --line:#D7CFBC;
   --green:#1AA67E; --amber:#E8920A; --red:#E0322B;
-  /* paper stock: a warm sheet, lit unevenly, with one soft shadow corner */
+  /* paper stock: a warm sheet, lit unevenly, ruled like a notebook page */
   min-height:100vh;color:var(--ink);
   background-color:var(--paper);
   background-image:
     radial-gradient(150% 100% at 50% -25%, rgba(255,253,246,.66), rgba(255,253,246,0) 60%),
     radial-gradient(95% 80% at 9% 5%, rgba(255,250,236,.5), rgba(255,250,236,0) 46%),
-    radial-gradient(130% 120% at 93% 105%, rgba(120,94,56,.16), rgba(120,94,56,0) 55%);
+    radial-gradient(130% 120% at 93% 105%, rgba(120,94,56,.16), rgba(120,94,56,0) 55%),
+    repeating-linear-gradient(180deg, transparent 0 27px, rgba(54,86,148,.09) 27px 28px);
   background-attachment:fixed;
   font-family:Archivo,system-ui,sans-serif;display:flex;justify-content:center;padding:18px;box-sizing:border-box;position:relative;
 }
