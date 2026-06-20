@@ -1157,7 +1157,7 @@ const CSS = `
 .fb-hero{position:relative;background:var(--accent);border:3px solid var(--ink);border-radius:8px;box-shadow:8px 8px 0 var(--ink);
   padding:22px 18px 24px;margin:2px 2px 22px;text-align:center;display:flex;flex-direction:column;align-items:center;gap:12px;overflow:hidden;}
 .fb-hero>*{position:relative;z-index:1;}
-.fb-herobrand{font-family:Anton,'Arial Narrow',sans-serif;font-weight:400;font-size:clamp(46px,15.5vw,82px);line-height:.84;margin:0;
+.fb-herobrand{font-family:Anton,'Arial Narrow',sans-serif;font-weight:400;font-size:clamp(46px,15.5vw,82px);line-height:.96;margin:0;
   color:var(--paper);text-transform:uppercase;letter-spacing:.015em;text-shadow:4px 4px 0 var(--ink);}
 .fb-herotag{font-family:Anton,sans-serif;font-size:clamp(15px,4.4vw,22px);letter-spacing:.02em;text-transform:uppercase;
   color:var(--ink);background:var(--paper);border:2.5px solid var(--ink);border-radius:6px;padding:5px 13px;box-shadow:3px 3px 0 var(--ink);transform:rotate(-1.4deg);}
