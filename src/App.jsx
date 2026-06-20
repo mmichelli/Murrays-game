@@ -32,7 +32,7 @@ export default function App() {
     <div className="fb-root" style={{ "--accent": "#FF6A3D" }}>
       <style>{CSS}</style>
       <div className="fb-shell">
-        <div className="fb-brand">🇿🇦 MURRAY'S GAME <span>varsity edition</span></div>
+        <div className="fb-brand">🇿🇦 MURRAY'S GAME</div>
         {role && <div className="fb-topbackwrap"><button className="fb-topback" onClick={() => setRole(null)}>← Leave to start</button></div>}
         {!role && <Landing onPick={setRole} />}
         {role === "host" && <HostApp onExit={() => setRole(null)} />}
@@ -408,7 +408,6 @@ const CSS = `
   background-image:radial-gradient(circle at 1px 1px, rgba(34,28,24,.16) 0 1px, transparent 1.6px);background-size:4px 4px;}
 .fb-shell{width:100%;max-width:540px;position:relative;z-index:1;}
 .fb-brand{font-family:Anton,'Arial Narrow',sans-serif;letter-spacing:.06em;font-size:22px;text-align:center;margin:2px 0 18px;color:var(--ink);text-transform:uppercase;}
-.fb-brand span{font-family:'Space Mono',monospace;font-weight:700;font-size:12px;letter-spacing:.18em;color:var(--accent);vertical-align:3px;text-transform:lowercase;}
 
 .fb-card{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:20px;
   box-shadow:0 1px 0 #fff inset, 0 14px 30px rgba(40,28,18,.10);}
