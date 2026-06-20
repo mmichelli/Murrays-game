@@ -1,4 +1,4 @@
-import React, { useReducer, useEffect, useState, useRef, useMemo, useCallback } from "react";
+import React, { useReducer, useEffect, useLayoutEffect, useState, useRef, useMemo, useCallback } from "react";
 import {
   ROUNDS, PALETTE, MIN_WORDS, MAX_TEAMS, TURN_SECONDS, MURRAY_DECK,
   uid, initial, viewFor, createHostHub,
@@ -384,6 +384,41 @@ function VisualTimer({ timeLeft, total }) {
     </div>
   );
 }
+// The torn-paper word slip. The word is auto-sized to be as big as will
+// fit on one line, so long entries ("loadshedding") shrink to stay whole
+// instead of breaking ugly mid-word; only past the minimum size do we let
+// it wrap. The misregistration ghost (::before) inherits the same size.
+const WORD_MAX = 78, WORD_MIN = 30;
+function WordSlip({ word }) {
+  const slipRef = useRef(null);
+  const wordRef = useRef(null);
+  useLayoutEffect(() => {
+    const slip = slipRef.current, el = wordRef.current, card = slip?.parentElement;
+    if (!slip || !el || !card) return;
+    const fit = () => {
+      const px = (e, a, b) => { const s = getComputedStyle(e); return parseFloat(s[a]) + parseFloat(s[b]); };
+      const avail = card.clientWidth - px(card, "paddingLeft", "paddingRight") - px(slip, "paddingLeft", "paddingRight") - 2;
+      if (avail <= 0) return;
+      el.style.whiteSpace = "nowrap";
+      el.style.wordBreak = "normal";
+      el.style.fontSize = WORD_MAX + "px";
+      const natural = el.scrollWidth;
+      const next = natural > avail ? Math.max(WORD_MIN, Math.floor((WORD_MAX * avail) / natural)) : WORD_MAX;
+      el.style.fontSize = next + "px";
+      if (next <= WORD_MIN && el.scrollWidth > avail) { el.style.whiteSpace = "normal"; el.style.wordBreak = "break-word"; }
+    };
+    fit();
+    const ro = new ResizeObserver(fit);
+    ro.observe(card);
+    document.fonts?.ready?.then(fit).catch(() => {});
+    return () => ro.disconnect();
+  }, [word]);
+  return (
+    <div className="fb-slip" ref={slipRef} key={word}>
+      <div className="fb-word" data-word={word} ref={wordRef}>{word}</div>
+    </div>
+  );
+}
 function Play({ v, onIntent }) {
   const r = v.round;
   return (
@@ -394,7 +429,7 @@ function Play({ v, onIntent }) {
       </div>
       <VisualTimer timeLeft={v.timeLeft} total={TURN_SECONDS} />
       {v.isActive ? (<>
-        <div className="fb-slip" key={v.word}><div className="fb-word" data-word={v.word}>{v.word}</div></div>
+        <WordSlip word={v.word} />
         <Rules r={r} tight />
         <button className="fb-btn fb-correct" onClick={() => onIntent("CORRECT")}>CORRECT <span>(Spacebar)</span></button>
         <p className="fb-noskip">No skipping. Resolve it or run out the clock.</p>
@@ -678,7 +713,7 @@ const CSS = `
   background:radial-gradient(circle at 6px -2px, var(--paper) 0 5px, transparent 5.5px) repeat-x;background-size:12px 8px;}
 @keyframes slipdrop{from{transform:translateY(-18px) rotate(2.5deg);opacity:0;}to{transform:translateY(0) rotate(-1.1deg);opacity:1;}}
 .fb-word{position:relative;z-index:0;font-family:Anton,'Arial Narrow',sans-serif;text-transform:uppercase;text-align:center;
-  font-size:clamp(40px,13vw,78px);line-height:1.0;letter-spacing:.01em;color:var(--ink);word-break:break-word;}
+  font-size:clamp(40px,13vw,78px);line-height:1.02;letter-spacing:.01em;color:var(--ink);white-space:nowrap;}
 .fb-word::before{content:attr(data-word);position:absolute;inset:0;color:var(--accent);transform:translate(3px,4px);
   mix-blend-mode:multiply;z-index:-1;}
 
