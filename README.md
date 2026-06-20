@@ -2,7 +2,7 @@
 
 **A 5-round Fishbowl party game for South African students.** Runs entirely peer-to-peer in the browser — **no backend, no accounts, no install.**
 
-▶ **Play it:** https://mmichelli.github.io/Murrays-game-/
+▶ **Play it:** https://mmichelli.github.io/Murrays-game/
 
 One phone opens the **room** (it's the authoritative game engine, timer, and hub). Every other phone connects once via copy-paste WebRTC signaling. Then everyone drops words into a shared bowl in parallel, splits into teams, and plays — the secret word is only ever sent to the device of the player currently giving clues.
 

@@ -40,8 +40,8 @@ jobs:
       - name: Build
         run: npm run build
         env:
-          # Project site lives at https://<user>.github.io/Murrays-game-/
-          BASE_PATH: /Murrays-game-/
+          # Project site lives at https://<user>.github.io/Murrays-game/
+          BASE_PATH: /Murrays-game/
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
         with:
