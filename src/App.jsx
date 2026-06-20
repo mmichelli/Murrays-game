@@ -216,7 +216,6 @@ function HostApp({ onExit }) {
           <h1 className="fb-h1">You're hosting</h1>
           <label className="fb-label">Your name<input className="fb-input" value={name} onChange={(e) => setName(e.target.value)} maxLength={20} /></label>
           <button className="fb-btn" disabled={!name.trim()} onClick={openRoom}>Open the room</button>
-          <button className="fb-btn fb-ghost" onClick={onExit}>Back</button>
         </div>
       );
   }
@@ -312,7 +311,6 @@ function HostLobby({ state, dispatch, hostId, roomCode, peerStatus, onExit }) {
           : !placed ? "Everyone needs a group"
           : "Need 2 groups with players"}
       </button>
-      <button className="fb-link" onClick={onExit}>Leave</button>
     </div>
   );
 }
@@ -471,7 +469,6 @@ function ClientApp({ onExit, initialRoom }) {
         {!initialRoom && <label className="fb-label">Room code<input className="fb-input" value={code} onChange={(e) => setCode(e.target.value)} maxLength={12} placeholder="e.g. kx7m2p" /></label>}
         <button className="fb-btn" disabled={!name.trim() || !code.trim()} onClick={join}>Join room</button>
         {status && <p className="fb-err">{status}</p>}
-        <button className="fb-btn fb-ghost" onClick={onExit}>Back</button>
       </>)}
       {step === "connecting" && <p className="fb-muted">{status || "Connecting…"}</p>}
       {step === "lobby" && lobby && (<>
