@@ -1051,14 +1051,19 @@ const CSS = `
 .fb-brand:active{transform:translate(1px,1px);text-shadow:2px 2px 0 var(--accent);}
 .fb-brand:focus-visible{outline:2.5px solid var(--ink);outline-offset:4px;border-radius:4px;}
 
-/* brand + language flag picker */
+/* brand + language flag picker - neo-brutalist hard-edged toggles */
 .fb-topbar{display:flex;flex-direction:column;align-items:center;gap:11px;margin:6px 0 18px;}
-.fb-langs{display:inline-flex;gap:3px;background:var(--panel);border:1.5px solid var(--line);border-radius:999px;padding:3px;}
-.fb-lang{display:inline-flex;align-items:center;gap:6px;background:transparent;border:none;border-radius:999px;padding:6px 12px;cursor:pointer;
-  font-family:'Space Mono',monospace;font-size:12px;font-weight:700;letter-spacing:.04em;color:var(--muted);transition:background .12s,color .12s;}
-.fb-lang .fb-flag{font-size:15px;line-height:1;}
-.fb-lang.on{background:var(--ink);color:var(--paper);}
-.fb-lang:focus-visible{outline:2.5px solid var(--ink);outline-offset:2px;}
+.fb-langs{display:inline-flex;gap:7px;}
+.fb-lang{display:inline-flex;align-items:center;gap:6px;background:var(--panel);border:2.5px solid var(--ink);border-radius:6px;padding:6px 12px;cursor:pointer;
+  font-family:'Space Mono',monospace;font-size:12px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;color:var(--muted);
+  box-shadow:2px 2px 0 var(--ink);transition:transform .07s,box-shadow .07s;}
+.fb-lang:hover{transform:translate(-1px,-1px);box-shadow:3px 3px 0 var(--ink);color:var(--ink);}
+.fb-lang:active{transform:translate(2px,2px);box-shadow:0 0 0 var(--ink);}
+.fb-lang .fb-flag{font-size:16px;line-height:1;}
+.fb-lang.on{background:var(--ink);color:var(--paper);box-shadow:3px 3px 0 var(--accent);}
+.fb-lang.on:hover{transform:translate(-1px,-1px);box-shadow:4px 4px 0 var(--accent);color:var(--paper);}
+.fb-lang.on:active{transform:translate(3px,3px);box-shadow:0 0 0 var(--accent);}
+.fb-lang:focus-visible{outline:3px solid var(--accent);outline-offset:3px;}
 
 /* neo-brutalist paper cards: thick ink border + hard offset shadow. */
 .fb-card{position:relative;border:3px solid var(--ink);border-radius:6px;padding:22px;
