@@ -2,7 +2,7 @@ import { describe, it, expect } from "vitest";
 import {
   reducer, initial, viewFor, lobbyFor, encode, decode, shuffle,
   ROUNDS, PALETTE, MIN_WORDS, MAX_TEAMS, TURN_SECONDS, MURRAY_DECK,
-  WORDS_PER_PLAYER, sampleDeck,
+  WORDS_PER_PLAYER, sampleDeck, ICE, peerOptions,
 } from "../src/engine.js";
 
 // Drive the reducer through a list of actions from a starting state.
@@ -258,5 +258,23 @@ describe("shuffle", () => {
     expect(out).toHaveLength(50);
     expect([...out].sort((a, b) => a - b)).toEqual(src);
     expect(src).toEqual(Array.from({ length: 50 }, (_, i) => i)); // original untouched
+  });
+});
+
+describe("peer / ICE config", () => {
+  it("offers both STUN and a TURN relay so cross-network phones can connect", () => {
+    const urls = ICE.map((s) => s.urls);
+    expect(urls.some((u) => u.startsWith("stun:"))).toBe(true);
+    expect(urls.some((u) => u.startsWith("turn:"))).toBe(true);
+    // every TURN entry must carry credentials or the browser rejects it
+    ICE.filter((s) => s.urls.startsWith("turn:")).forEach((s) => {
+      expect(s.username).toBeTruthy();
+      expect(s.credential).toBeTruthy();
+    });
+  });
+  it("peerOptions actually hands the ICE servers to PeerJS", () => {
+    const opts = peerOptions();
+    expect(opts.config.iceServers).toBe(ICE);          // wired through, not dropped
+    expect(peerOptions({ debug: 3 }).debug).toBe(3);   // overridable
   });
 });

@@ -82,7 +82,20 @@ export const MURRAY_DECK = [
   "Takealot", "Capitec", "Vodacom", "MTN",
 ];
 
-export const ICE = [{ urls: "stun:stun.l.google.com:19302" }];
+// ICE servers handed to WebRTC. STUN alone only works when at least one peer
+// is directly reachable — between two phones on mobile data or behind
+// symmetric NATs it silently fails. The TURN relays let the data channel fall
+// back to relaying, which is what makes real phone-to-phone games connect.
+export const ICE = [
+  { urls: "stun:stun.l.google.com:19302" },
+  { urls: "stun:stun1.l.google.com:19302" },
+  { urls: "turn:openrelay.metered.ca:80", username: "openrelayproject", credential: "openrelayproject" },
+  { urls: "turn:openrelay.metered.ca:443", username: "openrelayproject", credential: "openrelayproject" },
+  { urls: "turn:openrelay.metered.ca:443?transport=tcp", username: "openrelayproject", credential: "openrelayproject" },
+];
+// Single source of truth for how we open a PeerJS peer — every `new Peer`
+// MUST go through this so the ICE servers above actually get used.
+export const peerOptions = (extra = {}) => ({ debug: 1, config: { iceServers: ICE }, ...extra });
 
 export const uid = () => Math.random().toString(36).slice(2, 8);
 export const shuffle = (a0) => { const a = [...a0]; for (let i = a.length - 1; i > 0; i--) { const j = (Math.random() * (i + 1)) | 0;[a[i], a[j]] = [a[j], a[i]]; } return a; };

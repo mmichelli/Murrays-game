@@ -1,7 +1,7 @@
 import React, { useReducer, useEffect, useState, useRef, useMemo, useCallback } from "react";
 import {
   ROUNDS, PALETTE, MIN_WORDS, MAX_TEAMS, TURN_SECONDS, WORDS_PER_PLAYER, sampleDeck,
-  uid, initial, viewFor, createHostHub,
+  uid, initial, viewFor, createHostHub, peerOptions,
 } from "./engine.js";
 
 /* ================================================================== *
@@ -135,7 +135,7 @@ function HostApp({ onExit }) {
     (async () => {
       const { default: Peer } = await import("peerjs");
       if (cancelled) return;
-      peer = new Peer(peerIdFor(roomCode), { debug: 1 });
+      peer = new Peer(peerIdFor(roomCode), peerOptions());
       peerRef.current = peer;
       peer.on("open", () => setPeerStatus("online"));
       peer.on("connection", (conn) => hub.attach(peerChannel(conn)));
@@ -336,7 +336,7 @@ function ClientApp({ onExit, initialRoom }) {
   async function spinUp() {
     const { default: Peer } = await import("peerjs");
     if (!aliveRef.current) return;
-    const peer = new Peer({ debug: 1 });
+    const peer = new Peer(peerOptions());
     peerRef.current = peer;
     peer.on("open", () => dialHost());
     peer.on("disconnected", () => { if (aliveRef.current) { try { peer.reconnect(); } catch {} } });
