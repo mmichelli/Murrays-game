@@ -361,18 +361,38 @@ function Ready({ v, onIntent }) {
     </div>
   );
 }
+// A Time Timer-style disc: a colored wedge that depletes smoothly around a
+// clock face, seconds called out big in the middle. Zones shift green →
+// amber → red as the clock winds down; the last 10s give it a heartbeat.
+function VisualTimer({ timeLeft, total }) {
+  const frac = Math.max(0, Math.min(1, timeLeft / total));
+  const zone = timeLeft <= 10 ? "red" : timeLeft <= 20 ? "yellow" : "green";
+  const low = timeLeft <= 10 && timeLeft > 0;
+  return (
+    <div
+      className={`fb-vtimer ${zone} ${low ? "pulse" : ""}`}
+      role="timer"
+      aria-label={`${timeLeft} seconds left`}
+    >
+      <div className="fb-vt-disc" style={{ "--fbdeg": `${frac * 360}deg` }}>
+        <div className="fb-vt-ticks" aria-hidden="true" />
+        <div className="fb-vt-hub">
+          <span className="fb-vt-secs">{timeLeft}</span>
+          <span className="fb-vt-unit">sec</span>
+        </div>
+      </div>
+    </div>
+  );
+}
 function Play({ v, onIntent }) {
-  const r = v.round, pct = (v.timeLeft / TURN_SECONDS) * 100;
-  const zone = v.timeLeft <= 10 ? "red" : v.timeLeft <= 20 ? "yellow" : "green";
+  const r = v.round;
   return (
     <div className="fb-card fb-stack">
       <div className="fb-hud">
         <RoundLine r={r} />
         <span className="fb-turn" style={{ color: v.teamUpColor }}>● {v.activeName}</span>
       </div>
-      <div className={`fb-timer ${zone} ${v.timeLeft <= 10 ? "pulse" : ""}`}>
-        <div className="fb-bar" style={{ width: `${pct}%` }} /><span className="fb-secs">{v.timeLeft}s</span>
-      </div>
+      <VisualTimer timeLeft={v.timeLeft} total={TURN_SECONDS} />
       {v.isActive ? (<>
         <div className="fb-slip" key={v.word}><div className="fb-word" data-word={v.word}>{v.word}</div></div>
         <Rules r={r} tight />
@@ -632,11 +652,25 @@ const CSS = `
 .fb-hud{display:flex;justify-content:space-between;align-items:flex-start;gap:10px;}
 .fb-turn{font-family:'Space Mono',monospace;font-weight:700;font-size:13px;white-space:nowrap;}
 
-.fb-timer{position:relative;height:42px;border-radius:8px;background:#fff;overflow:hidden;border:1.5px solid var(--ink);display:flex;align-items:center;}
-.fb-bar{height:100%;transition:width 1s linear;opacity:.9;}
-.fb-timer.green .fb-bar{background:var(--green);}.fb-timer.yellow .fb-bar{background:var(--amber);}.fb-timer.red .fb-bar{background:var(--red);}
-.fb-secs{position:absolute;left:0;right:0;text-align:center;font-family:'Space Mono',monospace;font-weight:700;font-size:17px;color:var(--ink);}
-.fb-timer.pulse{animation:fbp .8s ease-in-out infinite;}@keyframes fbp{50%{box-shadow:inset 0 0 0 2px var(--red);}}
+/* Time Timer-style disc — a depleting wedge on a clock face. */
+@property --fbdeg{syntax:'<angle>';inherits:false;initial-value:360deg;}
+.fb-vtimer{align-self:center;position:relative;width:min(264px,70vw);aspect-ratio:1;margin:2px auto;}
+.fb-vtimer.green{--zone:var(--green);}
+.fb-vtimer.yellow{--zone:var(--amber);}
+.fb-vtimer.red{--zone:var(--red);}
+.fb-vt-disc{position:absolute;inset:0;border-radius:50%;border:3px solid var(--ink);
+  background:conic-gradient(var(--zone) var(--fbdeg), rgba(34,28,24,.07) var(--fbdeg) 360deg);
+  transition:--fbdeg 1s linear;box-shadow:0 16px 32px rgba(40,28,18,.20), 0 1px 0 #fff inset;}
+.fb-vt-ticks{position:absolute;inset:0;border-radius:50%;pointer-events:none;opacity:.5;
+  background:repeating-conic-gradient(from -.7deg, var(--ink) 0 1.4deg, transparent 1.4deg 30deg);
+  -webkit-mask:radial-gradient(circle, transparent 0 calc(50% - 15px), #000 calc(50% - 15px) calc(50% - 4px), transparent calc(50% - 4px));
+          mask:radial-gradient(circle, transparent 0 calc(50% - 15px), #000 calc(50% - 15px) calc(50% - 4px), transparent calc(50% - 4px));}
+.fb-vt-hub{position:absolute;inset:23%;border-radius:50%;background:var(--slip);border:2px solid var(--ink);
+  display:flex;flex-direction:column;align-items:center;justify-content:center;box-shadow:0 5px 12px rgba(40,28,18,.14);}
+.fb-vt-secs{font-family:Anton,'Arial Narrow',sans-serif;font-weight:400;font-size:clamp(38px,15vw,58px);line-height:.85;color:var(--ink);font-variant-numeric:tabular-nums;}
+.fb-vtimer.red .fb-vt-secs{color:var(--red);}
+.fb-vt-unit{font-family:'Space Mono',monospace;font-weight:700;font-size:11px;letter-spacing:.22em;text-transform:uppercase;color:var(--muted);margin-top:3px;}
+.fb-vtimer.pulse{animation:fbvt .85s ease-in-out infinite;}@keyframes fbvt{50%{transform:scale(1.045);}}
 
 .fb-slip{position:relative;align-self:center;max-width:100%;background:var(--slip);padding:26px 20px 22px;border-radius:8px;
   box-shadow:0 14px 28px rgba(40,28,18,.18);transform:rotate(-1.1deg);animation:slipdrop .28s cubic-bezier(.2,.85,.3,1);}
@@ -694,6 +728,6 @@ const CSS = `
 .fb-topback:hover{color:var(--ink);border-color:var(--ink);}
 
 @media (prefers-reduced-motion:reduce){
-  .fb-timer.pulse{animation:none;}.fb-bar{transition:none;}.fb-btn{transition:none;}.fb-slip{animation:none;}
+  .fb-vtimer.pulse{animation:none;}.fb-vt-disc{transition:none;}.fb-btn{transition:none;}.fb-slip{animation:none;}
 }
 `;
