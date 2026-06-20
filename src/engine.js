@@ -241,7 +241,7 @@ export function viewFor(s, pid) {
     canCorrect: s.phase === "play" && s.running && isActive && !!s.activeCard,
     canResume: s.phase === "transition" && isActive,
     word: isActive && s.phase === "play" ? s.activeCard : null,
-    inherited: isActive && s.phase === "ready" && !!s.activeCard && s.turnNumber > 1,
+    inherited: myTeamUp && s.phase === "ready" && !s.activePlayerId && !!s.activeCard && s.turnNumber > 1,
   };
 }
 export const lobbyFor = (s, pid) => ({

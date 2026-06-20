@@ -209,6 +209,48 @@ describe("game flow", () => {
     expect(g.phase).toBe("endgame");
   });
 
+  it("advancing the turn skips a team with no players", () => {
+    let s = run(initial, [
+      { type: "ADD_TEAM" }, { type: "ADD_TEAM" }, { type: "ADD_TEAM" },
+      { type: "ADD_WORDS", words: ["a", "b", "c", "d"] },
+    ]);
+    const [t1, , t3] = s.teams; // middle team gets no players
+    s = run(s, [
+      { type: "ADD_PLAYER", player: { id: "p1", name: "A", teamId: t1.id } },
+      { type: "ADD_PLAYER", player: { id: "p3", name: "C", teamId: t3.id } },
+      { type: "START_GAME" },
+    ]);
+    expect(s.teams[s.activeTeamIdx].id).toBe(t1.id);
+    const next = reducer(s, { type: "FORCE_NEXT" });
+    expect(next.teams[next.activeTeamIdx].id).toBe(t3.id); // jumped over the empty team
+  });
+
+  it("ends the game when no remaining team has players", () => {
+    const { s } = startedGame();
+    const empty = { ...s, players: [] };
+    expect(reducer(empty, { type: "FORCE_NEXT" }).phase).toBe("endgame");
+  });
+
+  it("PLAY_AGAIN wipes scores and round but keeps teams and re-deals the bowl", () => {
+    const { s } = startedGame();
+    const up = s.teams[s.activeTeamIdx];
+    const giver = s.players.find((p) => p.teamId === up.id);
+    let g = reducer(s, { type: "CLAIM_AND_BEGIN", fromId: giver.id });
+    g = reducer(g, { type: "CORRECT", fromId: giver.id });
+    g = reducer(g, { type: "END_GAME" });
+    expect(g.scores[up.id][0]).toBe(1);
+
+    const again = reducer(g, { type: "PLAY_AGAIN" });
+    expect(again.phase).toBe("ready");
+    expect(again.currentRound).toBe(1);
+    expect(again.turnNumber).toBe(1);
+    expect(again.running).toBe(false);
+    expect(again.activeCard).toBe(null);
+    expect(again.scores[up.id]).toEqual([0, 0, 0, 0, 0]);
+    expect(again.teams).toEqual(g.teams);
+    expect([...again.deck].sort()).toEqual([...s.bowl].sort()); // same bowl, full
+  });
+
   it("FORCE_NEXT and END_GAME behave", () => {
     const { s } = startedGame();
     const forced = reducer(s, { type: "FORCE_NEXT" });
@@ -244,6 +286,25 @@ describe("privacy: viewFor", () => {
     const offTeam = s.players.find((p) => p.teamId !== up.id);
     expect(viewFor(s, onTeam.id).canClaim).toBe(true);
     expect(viewFor(s, offTeam.id).canClaim).toBe(false);
+  });
+
+  it("flags an inherited card to the up-team before they claim", () => {
+    const { s } = startedGame();
+    const up0 = s.teams[s.activeTeamIdx];
+    const giver0 = s.players.find((p) => p.teamId === up0.id);
+    // run the clock out with the card unsolved — it carries to the next team
+    let g = reducer(s, { type: "CLAIM_AND_BEGIN", fromId: giver0.id });
+    g = reducer({ ...g, timeLeft: 1 }, { type: "TICK" });
+    expect(g.phase).toBe("ready");
+    expect(g.activeCard).toBeTruthy();
+
+    const up = g.teams[g.activeTeamIdx]; // now the other team is up
+    const heir = g.players.find((p) => p.teamId === up.id);
+    const bystander = g.players.find((p) => p.teamId !== up.id);
+    expect(viewFor(g, heir.id).inherited).toBe(true);
+    expect(viewFor(g, bystander.id).inherited).toBe(false);
+    // a fresh turn with no carried card never flags inheritance
+    expect(viewFor(s, giver0.id).inherited).toBe(false);
   });
 });
 
