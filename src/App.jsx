@@ -858,7 +858,7 @@ function WordAdder({ onAdd, count = 0, target = 0 }) {
 const CSS = `
 @import url('https://fonts.googleapis.com/css2?family=Anton&family=Archivo:wght@400;600;800&family=Space+Mono:wght@400;700&display=swap');
 .fb-root{
-  --paper:#E9E3D3; --panel:#FAF7F0; --slip:#FFFDF7; --ink:#221C18; --muted:#70675A; --line:#D7CFBC; --rule:30px;
+  --paper:#E9E3D3; --panel:#FAF7F0; --slip:#FFFDF7; --ink:#221C18; --muted:#70675A; --line:#D7CFBC;
   --green:#1AA67E; --amber:#E8920A; --red:#E0322B;
   /* a warm paper desk, lit unevenly — the ruled pages sit on top of it */
   min-height:100vh;color:var(--ink);
@@ -880,21 +880,10 @@ const CSS = `
   background:linear-gradient(90deg,#007A4D 0 30%,#FFB81C 30% 45%,#DE3831 45% 70%,#0b3aa1 70% 100%);
   box-shadow:0 1px 0 rgba(255,255,255,.55);}
 
-/* every card is a leaf from a South African exercise book: feint blue
-   rule lines, a red margin down the left, and a punched binding strip. */
-.fb-card{position:relative;border:1px solid var(--line);border-radius:12px;padding:40px 22px 24px 32px;
+/* clean off-white paper cards on the warm desk. */
+.fb-card{position:relative;border:1px solid var(--line);border-radius:12px;padding:22px;
   background-color:var(--panel);
-  background-image:
-    linear-gradient(90deg, transparent 0 23px, rgba(201,68,68,.30) 23px 24px, transparent 24px),
-    repeating-linear-gradient(180deg, transparent 0 calc(var(--rule) - 1px), rgba(54,86,148,.16) calc(var(--rule) - 1px) var(--rule));
-  background-repeat:no-repeat, repeat;
-  background-position:0 34px, 0 40px;
-  background-size:100% calc(100% - 34px), auto;
   box-shadow:0 1px 0 #fff inset, 0 14px 30px rgba(40,28,18,.12);}
-/* binding holes sit in a clean top band, above where margin + rules begin */
-.fb-card::before{content:"";position:absolute;left:18px;right:18px;top:13px;height:12px;pointer-events:none;
-  background-image:radial-gradient(circle at 50% 50%, var(--paper) 0 4px, rgba(34,28,24,.22) 4px 5px, transparent 5.5px);
-  background-size:30px 12px;background-repeat:repeat-x;}
 .fb-stack{display:flex;flex-direction:column;gap:12px;}
 .fb-center{text-align:center;align-items:center;}
 
@@ -902,7 +891,7 @@ const CSS = `
 .fb-h2{font-family:'Space Mono',monospace;font-weight:700;font-size:12px;letter-spacing:.14em;margin:0;text-transform:uppercase;color:var(--muted);}
 .fb-xl{font-size:clamp(38px,11vw,58px);line-height:.96;}
 .fb-center .fb-h1.fb-xl{margin:6px 0 2px;}
-.fb-muted{color:var(--muted);margin:0;font-size:15px;line-height:var(--rule);}
+.fb-muted{color:var(--muted);margin:0;font-size:15px;line-height:1.5;}
 .fb-muted b{color:var(--ink);}
 .fb-tiny{color:var(--muted);font-size:12px;margin:0;font-family:'Space Mono',monospace;}
 .fb-num{font-family:Anton,sans-serif;font-weight:400;font-size:20px;color:var(--accent);vertical-align:-1px;margin-right:4px;}
