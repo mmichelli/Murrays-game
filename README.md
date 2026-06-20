@@ -3,7 +3,9 @@
 [![CI](https://github.com/mmichelli/Murrays-game/actions/workflows/ci.yml/badge.svg)](https://github.com/mmichelli/Murrays-game/actions/workflows/ci.yml)
 [![Deploy to GitHub Pages](https://github.com/mmichelli/Murrays-game/actions/workflows/deploy.yml/badge.svg)](https://github.com/mmichelli/Murrays-game/actions/workflows/deploy.yml)
 
-**A 5-round Fishbowl party game for South African students.** Runs entirely peer-to-peer in the browser — **no backend, no accounts, no install.**
+**A 5-round Fishbowl party game** — the one you might also know as **Celebrity**, **Salad Bowl**, **Monikers** or **the Hat Game**. Built for South African students and named after Murray, the varsity mate who first taught us to play.
+
+Runs entirely peer-to-peer in the browser — **no backend, no accounts, no install.**
 
 ▶ **Play it:** https://mmichelli.github.io/Murrays-game/
 
