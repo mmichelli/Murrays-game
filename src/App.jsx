@@ -594,11 +594,20 @@ const CSS = `
 .fb-root{
   --paper:#E9E3D3; --panel:#F3EEE0; --slip:#FBF7EC; --ink:#221C18; --muted:#8A8173; --line:#D7CFBC;
   --green:#1AA67E; --amber:#E8920A; --red:#E0322B;
-  min-height:100vh;background:var(--paper);color:var(--ink);
+  /* paper stock: a warm sheet, lit unevenly, with one soft shadow corner */
+  min-height:100vh;color:var(--ink);
+  background-color:var(--paper);
+  background-image:
+    radial-gradient(150% 100% at 50% -25%, rgba(255,253,246,.66), rgba(255,253,246,0) 60%),
+    radial-gradient(95% 80% at 9% 5%, rgba(255,250,236,.5), rgba(255,250,236,0) 46%),
+    radial-gradient(130% 120% at 93% 105%, rgba(120,94,56,.16), rgba(120,94,56,0) 55%);
+  background-attachment:fixed;
   font-family:Archivo,system-ui,sans-serif;display:flex;justify-content:center;padding:18px;box-sizing:border-box;position:relative;
 }
-.fb-root::before{content:"";position:fixed;inset:0;pointer-events:none;z-index:0;mix-blend-mode:multiply;opacity:.5;
-  background-image:radial-gradient(circle at 1px 1px, rgba(34,28,24,.16) 0 1px, transparent 1.6px);background-size:4px 4px;}
+/* fine fibre grain printed over the whole surface — paper, cards and all */
+.fb-root::before{content:"";position:fixed;inset:0;pointer-events:none;z-index:100;mix-blend-mode:multiply;opacity:.1;
+  background-image:url("data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20width='180'%20height='180'%3E%3Cfilter%20id='n'%3E%3CfeTurbulence%20type='fractalNoise'%20baseFrequency='0.82'%20numOctaves='2'%20stitchTiles='stitch'/%3E%3CfeColorMatrix%20type='saturate'%20values='0'/%3E%3C/filter%3E%3Crect%20width='180'%20height='180'%20filter='url(%23n)'/%3E%3C/svg%3E");
+  background-size:180px 180px;}
 .fb-shell{width:100%;max-width:540px;position:relative;z-index:1;}
 .fb-brand{font-family:Anton,'Arial Narrow',sans-serif;letter-spacing:.06em;font-size:22px;text-align:center;margin:2px 0 18px;color:var(--ink);text-transform:uppercase;}
 
