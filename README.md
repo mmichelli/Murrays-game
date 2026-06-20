@@ -27,6 +27,15 @@ Same bowl of words cycles through all five rounds — it just gets harder:
 
 The live site is served over HTTPS, so WebRTC works straight from your phones — just get everyone on the same WiFi for the most reliable connection.
 
+## Surviving a reload
+
+A refresh (or an accidental tab switch) no longer nukes the game. Each device remembers its role, and:
+
+- **The host** keeps the entire authoritative game in `sessionStorage` — players, teams, the bowl, scores, the current round and the timer. Reload and the room comes straight back.
+- **A player** keeps their identity, so when they re-connect they drop back into the *same* team with their scores intact, rather than appearing as a duplicate.
+
+The one thing a reload can't preserve is the live WebRTC link itself — there's no signaling server to revive it through — so a reconnecting player re-trades a code with the host once. Everything else picks up exactly where it left off. (State lives in per-tab `sessionStorage`, so a host and a player can still be tested in two tabs of one browser.)
+
 ## How the P2P networking works
 
 There's **no signaling server**. Each join is a manual SDP exchange:
@@ -50,15 +59,15 @@ npm run build      # production build
 
 The pure game engine and the **entire peer-to-peer message protocol** are unit-tested with [Vitest](https://vitest.dev):
 
-- [`test/engine.test.js`](test/engine.test.js) — the reducer, round progression, scoring, the word-privacy filter, and the signaling codec.
-- [`test/p2p.test.js`](test/p2p.test.js) — drives `createHostHub` over an in-memory loopback of a WebRTC data-channel pair: players connecting, picking teams, adding words (with de-dup), disconnecting, and — critically — a test that **proves the secret word never reaches any device except the active clue-giver's**, even over the wire.
+- [`test/engine.test.js`](test/engine.test.js) — the reducer, round progression, scoring, the word-privacy filter, the signaling codec, and host-state rehydration + reconnect-by-id.
+- [`test/p2p.test.js`](test/p2p.test.js) — drives `createHostHub` over an in-memory loopback of a WebRTC data-channel pair: players connecting, picking teams, adding words (with de-dup), reloading back into the same slot, and — critically — a test that **proves the secret word never reaches any device except the active clue-giver's**, even over the wire.
 
 Both run automatically in GitHub Actions on every push and pull request ([`.github/workflows/ci.yml`](.github/workflows/ci.yml)), and again before each Pages deploy ([`.github/workflows/deploy.yml`](.github/workflows/deploy.yml)).
 
 ```bash
 npm test
-# ✓ test/engine.test.js (16 tests)
-# ✓ test/p2p.test.js    (7 tests)
+# ✓ test/engine.test.js (22 tests)
+# ✓ test/p2p.test.js     (8 tests)
 ```
 
 ## Stack

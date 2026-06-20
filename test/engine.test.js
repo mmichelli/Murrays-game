@@ -1,8 +1,20 @@
 import { describe, it, expect } from "vitest";
 import {
-  reducer, initial, viewFor, lobbyFor, encode, decode, shuffle,
+  reducer, initial, viewFor, lobbyFor, encode, decode, shuffle, createHostHub,
   ROUNDS, PALETTE, MIN_WORDS, MAX_TEAMS, TURN_SECONDS, MURRAY_DECK,
 } from "../src/engine.js";
+
+// An in-memory stand-in for a WebRTC data channel: records what the hub
+// sends, and lets a test push a client message in or simulate a drop.
+function makeChannel() {
+  return {
+    readyState: "open", sent: [],
+    send(s) { this.sent.push(JSON.parse(s)); },
+    close() { if (this.readyState === "open") { this.readyState = "closed"; this.onclose?.(); } },
+    recv(m) { this.onmessage?.({ data: JSON.stringify(m) }); },
+    last(t) { return [...this.sent].reverse().find((m) => m.t === t); },
+  };
+}
 
 // Drive the reducer through a list of actions from a starting state.
 const run = (state, actions) => actions.reduce((s, a) => reducer(s, a), state);
@@ -199,6 +211,87 @@ describe("lobbyFor", () => {
     expect(lobby.started).toBe(false);
     expect(lobby.roster).toEqual([{ name: "Ann", teamId: s.teams[0].id }]);
     expect(lobby.teams[0].color).toBe(PALETTE[0]);
+    expect(lobby.youTeamId).toBe(s.teams[0].id); // so a reconnecting client restores its team
+  });
+});
+
+describe("P2P host hub — reload persistence", () => {
+  it("rehydrates from a saved state when the host reloads", () => {
+    const { s } = startedGame();
+    const hub = createHostHub({ initialState: s });
+    expect(hub.getState()).toBe(s); // in-progress game recovered, not reset to lobby
+    expect(hub.getState().phase).toBe("ready");
+  });
+
+  it("registers a brand-new player and hands back an id", () => {
+    const hub = createHostHub();
+    const ch = makeChannel();
+    hub.attach(ch);
+    ch.recv({ t: "hello", name: "Ann" });
+    const welcome = ch.last("welcome");
+    expect(welcome.youId).toBeTruthy();
+    expect(hub.getState().players.map((p) => p.id)).toContain(welcome.youId);
+    expect(hub.channelCount()).toBe(1);
+  });
+
+  it("keeps the player on disconnect so the slot can be reclaimed", () => {
+    const hub = createHostHub();
+    const ch = makeChannel();
+    hub.attach(ch);
+    ch.recv({ t: "hello", name: "Ann" });
+    const pid = ch.last("welcome").youId;
+    ch.close();
+    expect(hub.channelCount()).toBe(0);          // channel gone
+    expect(hub.getState().players.some((p) => p.id === pid)).toBe(true); // player stays
+  });
+
+  it("reclaims the same slot + team when a device rejoins with its saved id", () => {
+    const hub = createHostHub();
+    hub.dispatch({ type: "ADD_TEAM" });
+    hub.dispatch({ type: "ADD_TEAM" });
+    const teamId = hub.getState().teams[1].id;
+
+    const a = makeChannel();
+    hub.attach(a);
+    a.recv({ t: "hello", name: "Ann" });
+    const pid = a.last("welcome").youId;
+    hub.dispatch({ type: "SET_TEAM", id: pid, teamId });
+    a.close();
+
+    // ...later, the same player reloads and reconnects with their saved id.
+    const b = makeChannel();
+    hub.attach(b);
+    b.recv({ t: "hello", name: "Ann", youId: pid });
+
+    expect(b.last("welcome").youId).toBe(pid);                 // same identity
+    expect(hub.getState().players.filter((p) => p.id === pid)).toHaveLength(1); // no duplicate
+    expect(hub.getState().players.find((p) => p.id === pid).teamId).toBe(teamId); // team kept
+    expect(b.last("lobby")?.lobby.youTeamId).toBe(teamId);     // and pushed back to them
+  });
+
+  it("a stale channel closing after a reclaim doesn't drop the live one", () => {
+    const hub = createHostHub();
+    const a = makeChannel();
+    hub.attach(a);
+    a.recv({ t: "hello", name: "Ann" });
+    const pid = a.last("welcome").youId;
+
+    const b = makeChannel();
+    hub.attach(b);
+    b.recv({ t: "hello", name: "Ann", youId: pid }); // reclaims pid (closes a)
+    a.close(); // late onclose from the old channel
+
+    expect(hub.channelCount()).toBe(1); // b survives
+  });
+
+  it("treats an unknown saved id as a fresh join", () => {
+    const hub = createHostHub();
+    const ch = makeChannel();
+    hub.attach(ch);
+    ch.recv({ t: "hello", name: "Ghost", youId: "nope42" });
+    const pid = ch.last("welcome").youId;
+    expect(pid).not.toBe("nope42");
+    expect(hub.getState().players.map((p) => p.id)).toContain(pid);
   });
 });
 

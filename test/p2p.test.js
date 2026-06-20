@@ -31,7 +31,8 @@ function makeClient(name) {
     else if (m.t === "view") client.view = m.view;
   };
   client.send = (o) => clientSide.send(JSON.stringify(o));
-  client.hello = () => client.send({ t: "hello", name });
+  // A fresh join omits youId; a reload sends the id the host gave us before.
+  client.hello = (youId) => client.send({ t: "hello", name, youId });
   return client;
 }
 
@@ -101,7 +102,7 @@ describe("P2P host hub — connection + lobby protocol", () => {
     expect(hub.getState().bowl).toEqual(["Braai", "Pap", "Boerewors"]);
   });
 
-  it("a disconnecting player is removed from the room", async () => {
+  it("a disconnecting player keeps their slot so a reload can reclaim it", async () => {
     const a = makeClient("Ann"), b = makeClient("Ben");
     hub.attach(a.hostSide); hub.attach(b.hostSide);
     a.hello(); b.hello();
@@ -110,8 +111,38 @@ describe("P2P host hub — connection + lobby protocol", () => {
 
     a.hostSide.close();
     await flush();
-    expect(hub.channelCount()).toBe(1);
-    expect(hub.getState().players.map((p) => p.name)).toEqual(["Ben"]);
+    expect(hub.channelCount()).toBe(1);                                   // channel dropped
+    expect(hub.getState().players.map((p) => p.name)).toEqual(["Ann", "Ben"]); // but player remains
+  });
+
+  it("a reloaded player reconnects to the same slot, team and scores", async () => {
+    const a = makeClient("Ann"), b = makeClient("Ben");
+    hub.attach(a.hostSide); hub.attach(b.hostSide);
+    a.hello(); b.hello();
+    await flush();
+    hub.dispatch({ type: "ADD_TEAM" });
+    hub.dispatch({ type: "ADD_TEAM" });
+    await flush();
+    const teamId = hub.getState().teams[0].id;
+    a.send({ t: "setTeam", teamId });
+    await flush();
+    const annId = a.id;
+
+    a.hostSide.close(); // Ann reloads — connection is gone, slot is not
+    await flush();
+
+    // Ann re-signals (a fresh channel) and says hello with her saved id.
+    const a2 = makeClient("Ann");
+    a2.id = annId;
+    hub.attach(a2.hostSide);
+    a2.hello(annId);
+    await flush();
+
+    expect(a2.id).toBe(annId);                                  // same identity, no duplicate
+    expect(hub.getState().players.filter((p) => p.id === annId)).toHaveLength(1);
+    expect(hub.getState().players.find((p) => p.id === annId).teamId).toBe(teamId);
+    expect(a2.lobby.youTeamId).toBe(teamId);                    // team restored on the client
+    expect(hub.channelCount()).toBe(2);
   });
 });
 

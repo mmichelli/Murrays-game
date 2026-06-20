@@ -25,9 +25,26 @@ import {
  * https / localhost (WebRTC needs a secure context).
  * ================================================================== */
 
+/* ===================== reload persistence ======================== *
+ * sessionStorage survives a page reload but is per-tab (so host + client
+ * tabs in one browser stay independent) and clears when the tab closes.
+ * The live WebRTC connection can't be revived — peers re-exchange codes —
+ * but role, host game state and player identity all come back, so a reload
+ * resumes the game instead of resetting it.
+ * ------------------------------------------------------------------ */
+const PK = { role: "mg.role", host: "mg.host", hostId: "mg.hostId", client: "mg.client" };
+const load = (k) => { try { const v = sessionStorage.getItem(k); return v == null ? null : JSON.parse(v); } catch { return null; } };
+const save = (k, v) => { try { sessionStorage.setItem(k, JSON.stringify(v)); } catch {} };
+const drop = (...ks) => { try { ks.forEach((k) => sessionStorage.removeItem(k)); } catch {} };
+const clearAll = () => drop(...Object.values(PK));
+
 /* ============================== APP ============================== */
 export default function App() {
-  const [role, setRole] = useState(null);
+  const [role, setRoleState] = useState(() => load(PK.role));
+  const setRole = useCallback((r) => {
+    if (r) save(PK.role, r); else clearAll(); // leaving wipes the saved game
+    setRoleState(r);
+  }, []);
   return (
     <div className="fb-root" style={{ "--accent": "#FF6A3D" }}>
       <style>{CSS}</style>
@@ -56,17 +73,24 @@ function Landing({ onPick }) {
 
 /* ============================== HOST ============================== */
 function HostApp({ onExit }) {
-  const hostId = useRef(uid()).current;
-  const [state, setState] = useState(initial);
+  // Reuse the same host id and game state across a reload.
+  const hostId = useRef(load(PK.hostId) || uid()).current;
+  const saved = useRef(load(PK.host)).current;
+  const [state, setState] = useState(saved || initial);
   const hubRef = useRef(null);
-  if (!hubRef.current) hubRef.current = createHostHub({ onState: setState });
+  if (!hubRef.current) hubRef.current = createHostHub({ onState: setState, initialState: saved || initial });
   const hub = hubRef.current;
   const dispatch = useCallback((a) => hub.dispatch(a), [hub]);
 
   const [name, setName] = useState("");
-  const [open, setOpen] = useState(false);
+  // If a saved game already has us as a player, skip the name screen.
+  const [open, setOpen] = useState(() => !!saved?.players?.some((p) => p.id === hostId));
 
   const view = useMemo(() => viewFor(state, hostId), [state, hostId]);
+
+  // Persist id + authoritative state so a reload recovers the whole game.
+  useEffect(() => { save(PK.hostId, hostId); }, [hostId]);
+  useEffect(() => { save(PK.host, state); }, [state]);
 
   // Host is the authoritative timer.
   useEffect(() => { if (!state.running) return; const id = setInterval(() => dispatch({ type: "TICK" }), 1000); return () => clearInterval(id); }, [state.running, dispatch]);
@@ -196,15 +220,25 @@ function HostLobby({ state, dispatch, hostId, makeAnswer, onExit }) {
 /* ============================= CLIENT ============================= */
 function ClientApp({ onExit }) {
   const pc = useRef(null), ch = useRef(null);
-  const [name, setName] = useState(""), [step, setStep] = useState("form");
+  const savedClient = useRef(load(PK.client) || {}).current;
+  const myId = useRef(savedClient.youId || null); // the id the host gave us
+  const [name, setName] = useState(savedClient.name || ""), [step, setStep] = useState("form");
   const [joinCode, setJoinCode] = useState(""), [answer, setAnswer] = useState(""), [status, setStatus] = useState("");
   const [lobby, setLobby] = useState(null), [view, setView] = useState(null), [myTeam, setMyTeam] = useState(null);
+  const rejoining = !!myId.current;
 
   const makeOffer = async () => {
+    save(PK.client, { name: name.trim(), youId: myId.current }); // prefill name on reload
     const conn = new RTCPeerConnection({ iceServers: ICE });
     const dc = conn.createDataChannel("game"); pc.current = conn; ch.current = dc;
-    dc.onopen = () => { dc.send(JSON.stringify({ t: "hello", name: name.trim() })); setStatus("Connected."); setStep("lobby"); };
-    dc.onmessage = (e) => { const m = JSON.parse(e.data); if (m.t === "lobby") setLobby(m.lobby); else if (m.t === "view") setView(m.view); else if (m.t === "welcome") { } };
+    // Send our saved id so the host reconnects us to the same slot + team.
+    dc.onopen = () => { dc.send(JSON.stringify({ t: "hello", name: name.trim(), youId: myId.current })); setStatus("Connected."); setStep("lobby"); };
+    dc.onmessage = (e) => {
+      const m = JSON.parse(e.data);
+      if (m.t === "lobby") { setLobby(m.lobby); if (m.lobby.youTeamId) setMyTeam(m.lobby.youTeamId); }
+      else if (m.t === "view") setView(m.view);
+      else if (m.t === "welcome") { myId.current = m.youId; save(PK.client, { name: name.trim(), youId: m.youId }); }
+    };
     dc.onclose = () => setStatus("Disconnected.");
     conn.onconnectionstatechange = () => { if (["failed", "disconnected"].includes(conn.connectionState)) setStatus("Connection lost. Reload to rejoin."); };
     await conn.setLocalDescription(await conn.createOffer());
@@ -221,8 +255,9 @@ function ClientApp({ onExit }) {
     <div className="fb-card fb-stack">
       <h1 className="fb-h1">Join a room</h1>
       {step === "form" && (<>
+        {rejoining && <p className="fb-muted">Welcome back, <b>{name}</b> — generate a fresh code and the host will drop you back in your team, scores and all.</p>}
         <label className="fb-label">Your name<input className="fb-input" value={name} onChange={(e) => setName(e.target.value)} maxLength={20} /></label>
-        <button className="fb-btn" disabled={!name.trim()} onClick={makeOffer}>Generate my join code</button>
+        <button className="fb-btn" disabled={!name.trim()} onClick={makeOffer}>{rejoining ? "Rejoin the room" : "Generate my join code"}</button>
         <button className="fb-btn fb-ghost" onClick={onExit}>Back</button>
       </>)}
       {step === "offer" && (<>

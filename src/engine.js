@@ -173,6 +173,7 @@ export function viewFor(s, pid) {
 export const lobbyFor = (s, pid) => ({
   teams: s.teams.map((t, i) => ({ id: t.id, name: t.name, color: PALETTE[i % PALETTE.length] })),
   bowlCount: s.bowl.length, started: s.phase !== "lobby", youId: pid,
+  youTeamId: s.players.find((p) => p.id === pid)?.teamId ?? null,
   roster: s.players.map((p) => ({ name: p.name, teamId: p.teamId })),
 });
 
@@ -183,19 +184,20 @@ export const lobbyFor = (s, pid) => ({
  *   { readyState, send(str), onmessage(ev), onclose() }  plus a
  *   private `_pid` we stamp on once the player says hello.
  * ------------------------------------------------------------------ */
-export function createHostHub({ onState } = {}) {
-  let state = initial;
+export function createHostHub({ onState, initialState } = {}) {
+  // Rehydrate from a previously persisted state when the host reloads, so
+  // an in-progress game (players, teams, bowl, scores, round) is recovered.
+  let state = initialState || initial;
   const channels = new Map(); // pid -> channel
 
   const send = (ch, obj) => { if (ch && ch.readyState === "open") { try { ch.send(JSON.stringify(obj)); } catch {} } };
 
+  const snapshotFor = (pid) => state.phase === "lobby"
+    ? { t: "lobby", lobby: lobbyFor(state, pid) }
+    : { t: "view", view: viewFor(state, pid) };
+
   function broadcast() {
-    channels.forEach((ch, pid) => {
-      const msg = state.phase === "lobby"
-        ? { t: "lobby", lobby: lobbyFor(state, pid) }
-        : { t: "view", view: viewFor(state, pid) };
-      send(ch, msg);
-    });
+    channels.forEach((ch, pid) => send(ch, snapshotFor(pid)));
   }
 
   function dispatch(action) {
@@ -209,10 +211,21 @@ export function createHostHub({ onState } = {}) {
 
   function handle(ch, m) {
     if (m.t === "hello") {
-      const pid = uid();
+      // A returning device sends the id it was given before (saved across a
+      // reload). If we still know that player, reclaim the same slot — same
+      // team, same scores — instead of spawning a duplicate ghost.
+      const rejoining = m.youId && state.players.some((p) => p.id === m.youId);
+      const pid = rejoining ? m.youId : uid();
+      const prev = channels.get(pid);
+      if (prev && prev !== ch) { try { prev.close?.(); } catch {} }
       channels.set(pid, ch); ch._pid = pid;
       send(ch, { t: "welcome", youId: pid });
-      dispatch({ type: "ADD_PLAYER", player: { id: pid, name: m.name || "Player", teamId: null } });
+      if (rejoining) {
+        // Player already exists (no dispatch) — push them the live state now.
+        send(ch, snapshotFor(pid));
+      } else {
+        dispatch({ type: "ADD_PLAYER", player: { id: pid, name: m.name || "Player", teamId: null } });
+      }
     } else if (m.t === "setTeam" && ch._pid) {
       dispatch({ type: "SET_TEAM", id: ch._pid, teamId: m.teamId });
     } else if (m.t === "words" && ch._pid) {
@@ -226,7 +239,10 @@ export function createHostHub({ onState } = {}) {
   function attach(ch) {
     ch.onmessage = (e) => { try { handle(ch, JSON.parse(e.data)); } catch {} };
     ch.onclose = () => {
-      if (ch._pid) { const pid = ch._pid; channels.delete(pid); dispatch({ type: "REMOVE_PLAYER", id: pid }); }
+      // Keep the player record so a reload can reclaim the slot (their team
+      // and scores survive). Only drop the channel, and only if it's still
+      // the live one — a reconnect may already have replaced this mapping.
+      if (ch._pid && channels.get(ch._pid) === ch) channels.delete(ch._pid);
     };
     return ch;
   }
