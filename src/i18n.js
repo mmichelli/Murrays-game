@@ -61,12 +61,12 @@ const STRINGS = {
     },
     host: {
       hosting: "You're hosting", createRoom: "Create the game", host: "Host",
-      keepOpen: "📌 Heads up - your phone runs the game. Keep this page open the whole time you play; if it closes, the game ends for everyone.",
+      keepOpen: "Heads up - your phone runs the game. Keep this page open the whole time you play; if it closes, the game ends for everyone.",
       forceNext: "Force next turn", endGame: "End game", playAgain: "Play again, same wordlist",
     },
     steps: { invite: "Invite", groups: "Groups", bowl: "Wordlist" },
     lobby: {
-      nextGroups: "Next · groups →", nextBowl: "Next · the wordlist →",
+      nextGroups: "Next · groups", nextBowl: "Next · the wordlist",
       total: "in the wordlist",
       start: "Start game", waitPlayers: "Waiting for players to join",
       addMore: ({ n }) => `Add ${n} more words`,
@@ -83,8 +83,8 @@ const STRINGS = {
       waitHost: "Waiting for the host to start…", joinGroupReady: "Join a group to be ready.",
     },
     reconnect: {
-      online: "⟳ Connection dropped, getting you back in…",
-      offline: "📡 You're offline. You'll rejoin automatically the moment you're back.",
+      online: "Connection dropped, getting you back in…",
+      offline: "You're offline. You'll rejoin automatically the moment you're back.",
     },
     ready: {
       timesUp: "Time's up!", yourTurn: "Your team's turn", nowUp: "Now up to give clues",
@@ -102,9 +102,9 @@ const STRINGS = {
       guessOut: "Guess out loud. The word stays on their phone.",
     },
     trans: {
-      roundOver: "⏸ Round over mid-turn", pausedLead: "Paused ·", pausedLeft: "left",
+      roundOver: "Round over mid-turn", pausedLead: "Paused ·", pausedLeft: "left",
       roundIs: ({ n, name }) => ["ROUND ", n, " IS ", { b: name }],
-      resume: "Resume turn ▶", waitResume: ({ name }) => `Waiting for ${name} to resume…`,
+      resume: "Resume turn", waitResume: ({ name }) => `Waiting for ${name} to resume…`,
     },
     end: {
       tie: "It's a tie!", wins: ({ team }) => `${team} wins!`,
@@ -112,16 +112,16 @@ const STRINGS = {
     },
     group: {
       empty: "empty", you: " (you)", host: " · host", offline: " · offline",
-      youreIn: "✓ You're in this group", joinThis: "Join this group",
-      noGroup: " · no group yet", addGroup: "+ add a group", nameLabel: "Group name", remove: "Remove group",
+      youreIn: "You're in this group", joinThis: "Join this group",
+      noGroup: " · no group yet", addGroup: "add a group", nameLabel: "Group name", remove: "Remove group",
     },
     share: {
       connecting: "Connecting…", errorTitle: "Code taken - re-open", roomLabel: "Room",
-      copied: "Copied ✓", copyLink: "Copy link", shareDots: "Share…",
+      copied: "Copied", copyLink: "Copy link", shareDots: "Share…",
       joinMyRoom: "Join my room", qrAlt: "QR code to join the room", roomLink: "Room link",
     },
     words: {
-      progressLead: "Your words", plenty: "✓ that's plenty", typeWord: "Type a word…",
+      progressLead: "Your words", plenty: "that's plenty", typeWord: "Type a word…",
       deleteAria: ({ w }) => `Delete "${w}"`,
       fillMine: ({ n }) => `Fill my ${n} from Murray's deck`,
     },
@@ -152,12 +152,12 @@ const STRINGS = {
     },
     host: {
       hosting: "Du er vert", createRoom: "Lag spillet", host: "Vert",
-      keepOpen: "📌 Obs - telefonen din kjører spillet. Hold denne siden åpen hele tiden mens dere spiller; lukkes den, avsluttes spillet for alle.",
+      keepOpen: "Obs - telefonen din kjører spillet. Hold denne siden åpen hele tiden mens dere spiller; lukkes den, avsluttes spillet for alle.",
       forceNext: "Tving neste tur", endGame: "Avslutt spillet", playAgain: "Spill igjen, samme ordliste",
     },
     steps: { invite: "Inviter", groups: "Grupper", bowl: "Ordliste" },
     lobby: {
-      nextGroups: "Neste · grupper →", nextBowl: "Neste · ordlisten →",
+      nextGroups: "Neste · grupper", nextBowl: "Neste · ordlisten",
       total: "i ordlisten",
       start: "Start spillet", waitPlayers: "Venter på at spillere blir med",
       addMore: ({ n }) => `Legg til ${n} ord til`,
@@ -174,8 +174,8 @@ const STRINGS = {
       waitHost: "Venter på at verten starter…", joinGroupReady: "Bli med i en gruppe for å være klar.",
     },
     reconnect: {
-      online: "⟳ Tilkoblingen falt, kobler deg til igjen…",
-      offline: "📡 Du er frakoblet. Du kobles til igjen automatisk så snart du er tilbake.",
+      online: "Tilkoblingen falt, kobler deg til igjen…",
+      offline: "Du er frakoblet. Du kobles til igjen automatisk så snart du er tilbake.",
     },
     ready: {
       timesUp: "Tiden er ute!", yourTurn: "Lagets tur", nowUp: "Nå er det tur til å gi hint",
@@ -193,9 +193,9 @@ const STRINGS = {
       guessOut: "Gjett høyt. Ordet blir på telefonen deres.",
     },
     trans: {
-      roundOver: "⏸ Runden er over midt i turen", pausedLead: "Pauset ·", pausedLeft: "igjen",
+      roundOver: "Runden er over midt i turen", pausedLead: "Pauset ·", pausedLeft: "igjen",
       roundIs: ({ n, name }) => ["RUNDE ", n, " ER ", { b: name }],
-      resume: "Fortsett turen ▶", waitResume: ({ name }) => `Venter på at ${name} fortsetter…`,
+      resume: "Fortsett turen", waitResume: ({ name }) => `Venter på at ${name} fortsetter…`,
     },
     end: {
       tie: "Uavgjort!", wins: ({ team }) => `${team} vinner!`,
@@ -203,16 +203,16 @@ const STRINGS = {
     },
     group: {
       empty: "tom", you: " (deg)", host: " · vert", offline: " · frakoblet",
-      youreIn: "✓ Du er i denne gruppen", joinThis: "Bli med i denne gruppen",
-      noGroup: " · ingen gruppe ennå", addGroup: "+ legg til en gruppe", nameLabel: "Gruppenavn", remove: "Fjern gruppe",
+      youreIn: "Du er i denne gruppen", joinThis: "Bli med i denne gruppen",
+      noGroup: " · ingen gruppe ennå", addGroup: "legg til en gruppe", nameLabel: "Gruppenavn", remove: "Fjern gruppe",
     },
     share: {
       connecting: "Kobler til…", errorTitle: "Koden er opptatt - åpne på nytt", roomLabel: "Rom",
-      copied: "Kopiert ✓", copyLink: "Kopier lenke", shareDots: "Del…",
+      copied: "Kopiert", copyLink: "Kopier lenke", shareDots: "Del…",
       joinMyRoom: "Bli med i rommet mitt", qrAlt: "QR-kode for å bli med i rommet", roomLink: "Romlenke",
     },
     words: {
-      progressLead: "Dine ord", plenty: "✓ det holder", typeWord: "Skriv et ord…",
+      progressLead: "Dine ord", plenty: "det holder", typeWord: "Skriv et ord…",
       deleteAria: ({ w }) => `Slett "${w}"`,
       fillMine: ({ n }) => `Fyll mine ${n} fra Murrays kortstokk`,
     },

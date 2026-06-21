@@ -152,6 +152,12 @@ export const CSS = `
 .fb-pixicon svg{width:100%;height:100%;display:block;}
 .fb-roundtag .fb-pixicon{width:1.35em;height:1.35em;vertical-align:-0.3em;}
 .fb-pixicon-th{width:1.7em;height:1.7em;vertical-align:0;}
+/* inline glyph icons sitting beside button/label text */
+.fb-ico-l{margin-right:.34em;}
+.fb-ico-r{margin-left:.34em;}
+/* close (×) buttons centre their icon via flex, so kill the baseline nudge */
+.fb-x .fb-pixicon{width:20px;height:20px;vertical-align:0;}
+.fb-wordx .fb-pixicon{width:15px;height:15px;vertical-align:0;}
 
 .fb-steps{display:flex;gap:8px;}
 .fb-step{flex:1;display:flex;align-items:center;justify-content:center;gap:7px;background:var(--panel);border:2.5px solid var(--ink);border-radius:6px;padding:11px 6px;font-family:'Space Mono',monospace;font-weight:700;font-size:12px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);cursor:pointer;}

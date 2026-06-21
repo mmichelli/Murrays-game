@@ -10,6 +10,12 @@ import handsSvg from "pixelarticons/svg/hand.svg?raw";
 import faceSvg from "pixelarticons/svg/smile.svg?raw";
 import alarmSvg from "pixelarticons/svg/alarm-clock.svg?raw";
 import loaderSvg from "pixelarticons/svg/loader.svg?raw";
+import chevronSvg from "pixelarticons/svg/chevron-right.svg?raw";
+import checkSvg from "pixelarticons/svg/check.svg?raw";
+import closeSvg from "pixelarticons/svg/close.svg?raw";
+import plusSvg from "pixelarticons/svg/plus.svg?raw";
+import playSvg from "pixelarticons/svg/play.svg?raw";
+import alertSvg from "pixelarticons/svg/square-alert.svg?raw";
 
 // Render a raw Pixelarticons SVG inline so it inherits the surrounding text
 // colour and scales with the font size via CSS.
@@ -25,8 +31,21 @@ const RawIcon = ({ svg, className = "" }) => svg
  * ------------------------------------------------------------------ */
 const ROUND_SVG = { 1: describeSvg, 2: charadesSvg, 3: oneWordSvg, 4: handsSvg, 5: faceSvg };
 export const RoundIcon = ({ n, className = "" }) => <RawIcon svg={ROUND_SVG[n]} className={className} />;
-export const AlarmIcon = ({ className = "" }) => <RawIcon svg={alarmSvg} className={className} />;
-export const LoaderIcon = ({ className = "" }) => <RawIcon svg={loaderSvg} className={className} />;
+
+/* ---------------------- small UI glyph icons ---------------------- *
+ * Pixel-art stand-ins for the bits of UI furniture that used to be text
+ * glyphs (arrows, ticks, crosses). Each is a stateless wrapper over one raw
+ * SVG, so it inherits the surrounding text colour and font size.
+ * ------------------------------------------------------------------ */
+const pixIcon = (svg) => ({ className = "" }) => <RawIcon svg={svg} className={className} />;
+export const AlarmIcon = pixIcon(alarmSvg);
+export const LoaderIcon = pixIcon(loaderSvg);
+export const ChevronIcon = pixIcon(chevronSvg);
+export const CheckIcon = pixIcon(checkSvg);
+export const CloseIcon = pixIcon(closeSvg);
+export const PlusIcon = pixIcon(plusSvg);
+export const PlayIcon = pixIcon(playSvg);
+export const AlertIcon = pixIcon(alertSvg);
 
 /* ------------------------- Murray, the mate ----------------------- *
  * The namesake, as a pixel minifigure: yellow head, dot eyes and a

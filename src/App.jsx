@@ -4,7 +4,7 @@ import {
   uid, initial, viewFor, createHostHub, peerOptions,
 } from "./engine.js";
 import { LANGS, detectLang, saveLang, makeT } from "./i18n.js";
-import { RoundIcon, MurrayPix, AlarmIcon, LoaderIcon } from "./pixel.jsx";
+import { RoundIcon, MurrayPix, AlarmIcon, LoaderIcon, ChevronIcon, CheckIcon, CloseIcon, PlusIcon, PlayIcon, AlertIcon } from "./pixel.jsx";
 import { CSS } from "./styles.js";
 
 /* ---------------------------- language ---------------------------- *
@@ -371,7 +371,7 @@ function HostApp({ onExit }) {
           <h1 className="fb-h1">{t("host.hosting")}</h1>
           <label className="fb-label">{t("common.yourName")}<input className="fb-input" value={name} onChange={(e) => setName(e.target.value)} maxLength={20} /></label>
           <button className="fb-btn" disabled={!name.trim()} onClick={openRoom}>{t("host.createRoom")}</button>
-          <p className="fb-hostnote">{t("host.keepOpen")}</p>
+          <p className="fb-hostnote"><AlertIcon className="fb-ico-l" />{t("host.keepOpen")}</p>
         </div>
       );
   }
@@ -426,7 +426,7 @@ function HostLobby({ state, dispatch, hostId, roomCode, peerStatus, onExit }) {
       <div className="fb-steps">
         {steps.map((s, i) => (
           <button key={s.label} className={`fb-step ${tab === i ? "on" : ""} ${s.done ? "done" : ""}`} onClick={() => setTab(i)}>
-            <span className="fb-stepn">{s.done ? "✓" : i + 1}</span>{s.label}
+            <span className="fb-stepn">{s.done ? <CheckIcon /> : i + 1}</span>{s.label}
           </button>
         ))}
       </div>
@@ -434,7 +434,7 @@ function HostLobby({ state, dispatch, hostId, roomCode, peerStatus, onExit }) {
       {tab === 0 && (<>
         <RoomShare code={roomCode} status={peerStatus} />
         <Arrivals players={state.players} myId={hostId} />
-        <button className="fb-btn fb-ghost" onClick={() => setTab(1)}>{t("lobby.nextGroups")}</button>
+        <button className="fb-btn fb-ghost" onClick={() => setTab(1)}>{t("lobby.nextGroups")}<ChevronIcon className="fb-ico-r" /></button>
       </>)}
 
       {tab === 1 && (
@@ -448,7 +448,7 @@ function HostLobby({ state, dispatch, hostId, roomCode, peerStatus, onExit }) {
             canAddTeam={teams.length < MAX_TEAMS}
             onRemoveTeam={(id) => dispatch({ type: "REMOVE_TEAM", id })}
           />
-          <button className="fb-btn fb-ghost" onClick={() => setTab(2)}>{t("lobby.nextBowl")}</button>
+          <button className="fb-btn fb-ghost" onClick={() => setTab(2)}>{t("lobby.nextBowl")}<ChevronIcon className="fb-ico-r" /></button>
         </div>
       )}
 
@@ -716,7 +716,7 @@ function ConnSteps({ stage }) {
     <ol className="fb-connsteps">
       {labels.map((label, i) => (
         <li key={i} className={`fb-connstep ${i < stage ? "done" : i === stage ? "now" : ""}`}>
-          <span className="fb-connmark" aria-hidden="true">{i < stage ? "✓" : i === stage ? <LoaderIcon /> : ""}</span>{label}
+          <span className="fb-connmark" aria-hidden="true">{i < stage ? <CheckIcon /> : i === stage ? <LoaderIcon /> : ""}</span>{label}
         </li>
       ))}
     </ol>
@@ -943,7 +943,7 @@ function Transition({ v, onIntent }) {
         <div className="fb-nextsetup"><span className="fb-nextsetuphead"><RoundIcon n={r.n} /> <Tr value={tr("trans.roundIs", { n: r.n, name: tr(`round.${r.n}.name`).toUpperCase() })} /></span>{tr(`round.${r.n}.setup`) && <span>{tr(`round.${r.n}.setup`)}</span>}</div>
         <RoundProgress n={r.n} />
         <Rules r={r} />
-        {v.canResume ? <button className="fb-btn fb-big" onClick={() => onIntent("RESUME")}>{tr("trans.resume")}</button>
+        {v.canResume ? <button className="fb-btn fb-big" onClick={() => onIntent("RESUME")}>{tr("trans.resume")}<PlayIcon className="fb-ico-r" /></button>
           : <p className="fb-muted">{tr("trans.waitResume", { name: v.activeName })}</p>}
       </div>
     </div>
@@ -1008,7 +1008,7 @@ function GroupBoard({ teams, roster, myId, myTeamId, onPick, onRename, onAddTeam
               <input className="fb-input bare" value={t.name} maxLength={16}
                 onChange={(e) => onRename(t.id, e.target.value)} aria-label={tr("group.nameLabel")} />
               <span className="fb-tcount">{t.count}</span>
-              {onRemoveTeam && teams.length > 2 && <button className="fb-x" title={tr("group.remove")} onClick={() => onRemoveTeam(t.id)}>×</button>}
+              {onRemoveTeam && teams.length > 2 && <button className="fb-x" title={tr("group.remove")} onClick={() => onRemoveTeam(t.id)}><CloseIcon /></button>}
             </div>
             <div className="fb-rosterwrap">
               {members(t.id).length === 0
@@ -1021,7 +1021,7 @@ function GroupBoard({ teams, roster, myId, myTeamId, onPick, onRename, onAddTeam
                 ))}
             </div>
             <button className={`fb-joinbtn ${mine ? "on" : ""}`} onClick={() => onPick(t.id)}>
-              {mine ? tr("group.youreIn") : tr("group.joinThis")}
+              {mine ? <><CheckIcon className="fb-ico-l" />{tr("group.youreIn")}</> : tr("group.joinThis")}
             </button>
           </div>
         );
@@ -1035,7 +1035,7 @@ function GroupBoard({ teams, roster, myId, myTeamId, onPick, onRename, onAddTeam
           ))}
         </div>
       )}
-      {canAddTeam && <button className="fb-btn fb-ghost" onClick={onAddTeam}>{tr("group.addGroup")}</button>}
+      {canAddTeam && <button className="fb-btn fb-ghost" onClick={onAddTeam}><PlusIcon className="fb-ico-l" />{tr("group.addGroup")}</button>}
     </div>
   );
 }
@@ -1072,7 +1072,7 @@ function RoomShare({ code, status }) {
       {qr && <img className="fb-qr" src={qr} alt={t("share.qrAlt")} width={200} height={200} />}
       <input className="fb-input mono fb-linkfield" readOnly value={link} onFocus={(e) => e.target.select()} aria-label={t("share.roomLink")} />
       <div className="fb-row fb-sharebtns">
-        <button className="fb-btn" onClick={copy}>{copied ? t("share.copied") : t("share.copyLink")}</button>
+        <button className="fb-btn" onClick={copy}>{copied ? <>{t("share.copied")}<CheckIcon className="fb-ico-r" /></> : t("share.copyLink")}</button>
         {canShare && <button className="fb-btn fb-ghost" onClick={share}>{t("share.shareDots")}</button>}
       </div>
     </div>
@@ -1113,7 +1113,7 @@ function WordAdder({ onAdd, onRemove, words = [], count = 0, target = 0 }) {
   return (
     <div className="fb-stack">
       <h2 className="fb-h1 fb-yourwords">{t("words.progressLead")}{target > 0 && <span className="fb-yourwordsnum">{count}/{target}</span>}</h2>
-      {done && <p className="fb-wordhint done">{t("words.plenty")}</p>}
+      {done && <p className="fb-wordhint done"><CheckIcon className="fb-ico-l" />{t("words.plenty")}</p>}
       <div className="fb-row">
         <input className="fb-input" value={draft} placeholder={t("words.typeWord")} maxLength={40} autoFocus
           onChange={(e) => setDraft(e.target.value)} onKeyDown={(e) => e.key === "Enter" && add()} />
@@ -1123,7 +1123,7 @@ function WordAdder({ onAdd, onRemove, words = [], count = 0, target = 0 }) {
         <div className="fb-mywords">
           {words.map((w) => (
             <span key={w} className="fb-myword">{w}
-              <button className="fb-wordx" aria-label={t("words.deleteAria", { w })} onClick={() => onRemove(w)}>×</button>
+              <button className="fb-wordx" aria-label={t("words.deleteAria", { w })} onClick={() => onRemove(w)}><CloseIcon /></button>
             </span>
           ))}
         </div>
