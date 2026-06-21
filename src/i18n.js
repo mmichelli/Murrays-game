@@ -67,6 +67,7 @@ const STRINGS = {
     steps: { invite: "Invite", groups: "Groups", bowl: "Wordlist" },
     lobby: {
       nextGroups: "Next · groups →", nextBowl: "Next · the wordlist →",
+      total: "in the wordlist",
       start: "Start game", waitPlayers: "Waiting for players to join",
       addMore: ({ n }) => `Add ${n} more words`,
       needGroup: "Everyone needs a group", needTwo: "Need 2 groups with players",
@@ -156,6 +157,7 @@ const STRINGS = {
     steps: { invite: "Inviter", groups: "Grupper", bowl: "Ordliste" },
     lobby: {
       nextGroups: "Neste · grupper →", nextBowl: "Neste · ordlisten →",
+      total: "i ordlisten",
       start: "Start spillet", waitPlayers: "Venter på at spillere blir med",
       addMore: ({ n }) => `Legg til ${n} ord til`,
       needGroup: "Alle trenger en gruppe", needTwo: "Trenger 2 grupper med spillere",

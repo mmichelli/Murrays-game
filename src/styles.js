@@ -81,6 +81,9 @@ export const CSS = `
 .fb-input.bare:focus{outline:none;box-shadow:none;border-bottom:2px solid var(--tc);}
 .fb-row{display:flex;gap:8px;}
 .fb-add{width:auto;padding-left:18px;padding-right:18px;}
+/* host's running wordlist total - a small status eyebrow, not a title */
+.fb-wordtotal{margin:0;font-family:'Space Mono',monospace;font-size:12px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);}
+.fb-wordtotal b{font-family:Anton,sans-serif;font-weight:400;font-size:22px;color:var(--accent);vertical-align:-3px;margin-right:5px;}
 /* "Your words" heading + inline tally */
 .fb-yourwords{display:flex;align-items:baseline;gap:9px;flex-wrap:wrap;margin-top:8px;}
 .fb-yourwordsnum{font-family:Anton,sans-serif;font-weight:400;font-size:19px;color:var(--accent);}

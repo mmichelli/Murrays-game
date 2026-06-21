@@ -454,6 +454,7 @@ function HostLobby({ state, dispatch, hostId, roomCode, peerStatus, onExit }) {
 
       {tab === 2 && (
         <div className="fb-card fb-stack">
+          <p className="fb-wordtotal"><b>{state.bowl.length}</b> {t("lobby.total")}</p>
           <WordAdder onAdd={(ws) => dispatch({ type: "ADD_WORDS", words: ws, by: hostId })}
             onRemove={(w) => dispatch({ type: "REMOVE_WORD", word: w, by: hostId })}
             words={state.bowl.filter((w) => (state.wordBy || {})[w.toLowerCase()] === hostId)}
