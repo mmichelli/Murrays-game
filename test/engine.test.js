@@ -69,6 +69,21 @@ describe("lobby reducer", () => {
     expect(s.teams).toHaveLength(2);
   });
 
+  it("auto-assigns a group-less joiner to the smallest team", () => {
+    let s = run(initial, [{ type: "ADD_TEAM" }, { type: "ADD_TEAM" }]);
+    const [t1, t2] = s.teams;
+    s = reducer(s, { type: "ADD_PLAYER", player: { id: "host", name: "H", teamId: t1.id, isHost: true } });
+    s = reducer(s, { type: "ADD_PLAYER", player: { id: "p1", name: "A", teamId: null } });
+    expect(s.players.find((p) => p.id === "p1").teamId).toBe(t2.id); // the empty one
+    s = reducer(s, { type: "ADD_PLAYER", player: { id: "p2", name: "B", teamId: null } });
+    expect(s.players.find((p) => p.id === "p2").teamId).toBe(t1.id); // tie -> first team
+  });
+  it("respects an explicit team choice on ADD_PLAYER", () => {
+    let s = run(initial, [{ type: "ADD_TEAM" }, { type: "ADD_TEAM" }]);
+    s = reducer(s, { type: "ADD_PLAYER", player: { id: "p1", name: "A", teamId: s.teams[1].id } });
+    expect(s.players[0].teamId).toBe(s.teams[1].id);
+  });
+
   it("dedupes words case-insensitively and trims", () => {
     const s = run(initial, [
       { type: "ADD_WORDS", words: ["Braai", "  biltong ", "BRAAI", "braai"] },

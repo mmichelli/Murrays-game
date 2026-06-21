@@ -158,8 +158,17 @@ export function reducer(state, a) {
       : { ...state, teams: state.teams.filter((t) => t.id !== a.id),
           players: state.players.map((p) => p.teamId === a.id ? { ...p, teamId: null } : p) };
     case "RENAME_TEAM": return { ...state, teams: state.teams.map((t) => t.id === a.id ? { ...t, name: a.name } : t) };
-    case "ADD_PLAYER": return state.players.some((p) => p.id === a.player.id) ? state
-      : { ...state, players: [...state.players, { connected: true, ...a.player }] };
+    case "ADD_PLAYER": {
+      if (state.players.some((p) => p.id === a.player.id)) return state;
+      let player = { connected: true, ...a.player };
+      // Auto-balance: a player who joins without a group lands in the smallest
+      // one (ties go to the first). They can still switch in the lobby.
+      if (player.teamId == null && state.teams.length) {
+        const counts = state.teams.map((t) => state.players.filter((p) => p.teamId === t.id).length);
+        player = { ...player, teamId: state.teams[counts.indexOf(Math.min(...counts))].id };
+      }
+      return { ...state, players: [...state.players, player] };
+    }
     case "REMOVE_PLAYER": {
       const { [a.id]: _gone, ...wordCounts } = state.wordCounts;
       return { ...state, players: state.players.filter((p) => p.id !== a.id), wordCounts };
