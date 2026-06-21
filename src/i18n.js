@@ -119,8 +119,8 @@ const STRINGS = {
       noGroup: " · no group yet", addGroup: "+ add a group", nameLabel: "Group name", remove: "Remove group",
     },
     share: {
-      shareRoom: "Share the room", connecting: "Connecting…", errorTitle: "Code taken - re-open",
-      scanSend: "Code:", copied: "Copied ✓", copyLink: "Copy link",
+      shareRoom: "Share the room", connecting: "Connecting…", errorTitle: "Code taken - re-open", roomLabel: "Room",
+      copied: "Copied ✓", copyLink: "Copy link",
       shareDots: "Share…",
       connectedCount: ({ n }) => `${n} ${n === 1 ? "phone" : "phones"} connected`,
       joinMyRoom: "Join my room", qrAlt: "QR code to join the room", roomLink: "Room link",
@@ -216,8 +216,8 @@ const STRINGS = {
       noGroup: " · ingen gruppe ennå", addGroup: "+ legg til en gruppe", nameLabel: "Gruppenavn", remove: "Fjern gruppe",
     },
     share: {
-      shareRoom: "Del rommet", connecting: "Kobler til…", errorTitle: "Koden er opptatt - åpne på nytt",
-      scanSend: "Kode:", copied: "Kopiert ✓", copyLink: "Kopier lenke",
+      shareRoom: "Del rommet", connecting: "Kobler til…", errorTitle: "Koden er opptatt - åpne på nytt", roomLabel: "Rom",
+      copied: "Kopiert ✓", copyLink: "Kopier lenke",
       shareDots: "Del…",
       connectedCount: ({ n }) => `${n} ${n === 1 ? "telefon" : "telefoner"} tilkoblet`,
       joinMyRoom: "Bli med i rommet mitt", qrAlt: "QR-kode for å bli med i rommet", roomLink: "Romlenke",

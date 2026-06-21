@@ -1060,12 +1060,13 @@ function RoomShare({ code, status, connected }) {
   };
   const canShare = typeof navigator !== "undefined" && !!navigator.share;
   const dot = status === "online" ? "var(--green)" : status === "error" ? "var(--red)" : "var(--amber)";
-  const title = status === "online" ? t("share.shareRoom") : status === "error" ? t("share.errorTitle") : t("share.connecting");
+  const title = status === "online"
+    ? <>{t("share.roomLabel")} <b className="fb-code">{code}</b></>
+    : status === "error" ? t("share.errorTitle") : t("share.connecting");
   return (
     <div className="fb-card fb-stack fb-center">
       <h2 className="fb-h2 fb-sharetitle"><span className="fb-statusdot" style={{ background: dot }} /> {title}</h2>
       {qr && <img className="fb-qr" src={qr} alt={t("share.qrAlt")} width={200} height={200} />}
-      <p className="fb-tiny">{t("share.scanSend")} <b className="fb-code">{code}</b></p>
       <input className="fb-input mono fb-linkfield" readOnly value={link} onFocus={(e) => e.target.select()} aria-label={t("share.roomLink")} />
       <div className="fb-row fb-sharebtns">
         <button className="fb-btn" onClick={copy}>{copied ? t("share.copied") : t("share.copyLink")}</button>
@@ -1310,6 +1311,7 @@ const CSS = `
 .fb-qr{width:200px;height:200px;border-radius:6px;background:var(--slip);border:3px solid var(--ink);padding:8px;box-shadow:6px 6px 0 var(--ink);image-rendering:pixelated;}
 .fb-statusline{display:flex;align-items:center;gap:8px;margin:0;color:var(--muted);font-size:13px;font-family:'Space Mono',monospace;}
 .fb-sharetitle{display:flex;align-items:center;justify-content:center;gap:8px;}
+.fb-sharetitle .fb-code{font-size:16px;}
 .fb-statusdot{width:10px;height:10px;border-radius:50%;flex:none;border:1.5px solid var(--ink);}
 .fb-code{font-family:'Space Mono',monospace;letter-spacing:.12em;color:var(--accent);text-transform:uppercase;}
 .fb-linkfield{font-size:12px;text-align:center;}
