@@ -540,6 +540,7 @@ function ClientApp({ onExit, initialRoom }) {
   const [reconnecting, setReconnecting] = useState(false);
   const [online, setOnline] = useState(typeof navigator === "undefined" ? true : navigator.onLine);
   const [lobby, setLobby] = useState(null), [view, setView] = useState(null);
+  const [pendingTeam, setPendingTeam] = useState(undefined); // group picked locally, maybe before the host has heard
 
   // Imperative connection state lives in refs so the reconnect machinery
   // isn't torn down or stale-closed by re-renders.
@@ -547,14 +548,19 @@ function ClientApp({ onExit, initialRoom }) {
   const peerRef = useRef(null), connRef = useRef(null);
   const retryRef = useRef(0), timerRef = useRef(null);
   const cidRef = useRef(null), nameRef = useRef(""), codeRef = useRef("");
+  const pendingTeamRef = useRef(undefined); // mirror of pendingTeam, read on reconnect
 
   const send = (o) => { const c = connRef.current; if (c && c.open) { try { c.send(JSON.stringify(o)); } catch {} } };
+  // Pick a group. Remember it so a tap made while offline still lands: it's
+  // re-sent the moment we reconnect, and shown optimistically until then.
+  const pickTeam = (teamId) => { pendingTeamRef.current = teamId; setPendingTeam(teamId); send({ t: "setTeam", teamId }); };
 
   // We know our own id (it's the stable cid we hand the host), so identity
   // holds even when reconnecting mid-game before a fresh lobby snapshot.
   const myId = cidRef.current;
   const me = lobby?.roster.find((p) => p.id === myId);
-  const myTeam = me?.teamId ?? null;
+  // Optimistic: show the group we picked even before the host confirms it.
+  const myTeam = pendingTeam ?? (me?.teamId ?? null);
   const myWords = me?.words ?? 0;
   const target = lobby?.wordsPerPlayer ?? WORDS_PER_PLAYER;
   // Highlight follows the group you join (brand colour until then).
@@ -573,6 +579,8 @@ function ClientApp({ onExit, initialRoom }) {
     conn.on("open", () => {
       retryRef.current = 0; setReconnecting(false); setStatus(""); setStep("lobby");
       conn.send(JSON.stringify({ t: "hello", name: nameRef.current, cid: cidRef.current }));
+      // Re-send a group choice made while we were offline so the host catches up.
+      if (pendingTeamRef.current !== undefined) conn.send(JSON.stringify({ t: "setTeam", teamId: pendingTeamRef.current }));
     });
     conn.on("data", (d) => { try { const m = JSON.parse(d); if (m.t === "lobby") setLobby(m.lobby); else if (m.t === "view") setView(m.view); } catch {} });
     conn.on("close", () => { if (aliveRef.current) scheduleRetry(); });
@@ -698,7 +706,7 @@ function ClientApp({ onExit, initialRoom }) {
       {step === "lobby" && lobby && (<>
         <GroupBoard
           teams={lobby.teams} roster={lobby.roster} myId={myId} myTeamId={myTeam}
-          onPick={(teamId) => send({ t: "setTeam", teamId })}
+          onPick={pickTeam}
           onRename={(id, nm) => send({ t: "renameTeam", id, name: nm })}
           onAddTeam={() => send({ t: "addTeam" })}
           canAddTeam={lobby.teams.length < lobby.maxTeams}
