@@ -1080,6 +1080,7 @@ function RoomShare({ code, status, connected }) {
 function Arrivals({ players, myId }) {
   const t = useT();
   const here = players.filter((p) => p.connected !== false);
+  if (here.length <= 1) return null; // nothing to show until someone else joins
   return (
     <div className="fb-card fb-stack">
       <h2 className="fb-h2">{t("arrivals.title", { n: here.length })}</h2>
