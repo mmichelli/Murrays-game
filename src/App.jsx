@@ -1283,7 +1283,7 @@ const CSS = `
 /* live arrivals roster - players pop in as little minifigures */
 .fb-arrlist{display:flex;flex-wrap:wrap;gap:9px;}
 .fb-arrchip{display:inline-flex;align-items:center;gap:7px;background:#fff;border:2.5px solid var(--ink);border-radius:9px;
-  box-shadow:3px 3px 0 var(--ink);padding:5px 11px 5px 7px;font-size:14px;animation:arrpop .34s cubic-bezier(.2,.9,.3,1.35);}
+  box-shadow:3px 3px 0 var(--ink);padding:5px 15px 5px 7px;font-size:14px;animation:arrpop .34s cubic-bezier(.2,.9,.3,1.35);}
 .fb-arrchip svg{display:block;flex:none;}
 .fb-arrchip b{font-family:Archivo,sans-serif;font-weight:800;color:var(--ink);}
 .fb-arrtag{font-family:'Space Mono',monospace;font-size:9px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:#fff;
