@@ -69,7 +69,7 @@ const STRINGS = {
       nextGroups: "Next · groups →", nextBowl: "Next · the wordlist →",
       groupsTap: ({ n }) => `Groups · ${n} · tap to join`,
       theBowl: "The wordlist",
-      bowlInfo: ({ x }) => `in the wordlist. Everyone adds at once. Aim for ${x} each.`,
+      bowlInfo: "in the wordlist",
       start: "Start game", waitPlayers: "Waiting for players to join",
       addMore: ({ n }) => `Add ${n} more words`,
       needGroup: "Everyone needs a group", needTwo: "Need 2 groups with players",
@@ -81,7 +81,7 @@ const STRINGS = {
       roomCode: "Room code", join: "Join room", connecting: "Connecting…",
       reaching: "Reaching the room…", roomNotAnswering: "Room not answering yet, retrying…",
       inRoom: "In the room",
-      bowlInfo: "in the wordlist. Everyone's adding at once.",
+      bowlInfo: "in the wordlist",
       waitHost: "Waiting for the host to start…", joinGroupReady: "Join a group to be ready.",
     },
     reconnect: {
@@ -126,7 +126,7 @@ const STRINGS = {
       joinMyRoom: "Join my room", qrAlt: "QR code to join the room", roomLink: "Room link",
     },
     words: {
-      progressLead: "Your words", plenty: "✓ that's plenty, add more if you like",
+      progressLead: "Your words", plenty: "✓ that's plenty",
       toGo: ({ n }) => `${n} to go`, typeWord: "Type a word…",
       fillMine: ({ n }) => `Fill my ${n} from Murray's deck`,
       hidden: "Your words stay hidden from everyone until they're in play.",
@@ -166,7 +166,7 @@ const STRINGS = {
       nextGroups: "Neste · grupper →", nextBowl: "Neste · ordlisten →",
       groupsTap: ({ n }) => `Grupper · ${n} · trykk for å bli med`,
       theBowl: "Ordlisten",
-      bowlInfo: ({ x }) => `i ordlisten. Alle legger til samtidig. Sikt mot ${x} hver.`,
+      bowlInfo: "i ordlisten",
       start: "Start spillet", waitPlayers: "Venter på at spillere blir med",
       addMore: ({ n }) => `Legg til ${n} ord til`,
       needGroup: "Alle trenger en gruppe", needTwo: "Trenger 2 grupper med spillere",
@@ -178,7 +178,7 @@ const STRINGS = {
       roomCode: "Romkode", join: "Bli med", connecting: "Kobler til…",
       reaching: "Når rommet…", roomNotAnswering: "Rommet svarer ikke ennå, prøver igjen…",
       inRoom: "I rommet",
-      bowlInfo: "i ordlisten. Alle legger til samtidig.",
+      bowlInfo: "i ordlisten",
       waitHost: "Venter på at verten starter…", joinGroupReady: "Bli med i en gruppe for å være klar.",
     },
     reconnect: {
@@ -223,7 +223,7 @@ const STRINGS = {
       joinMyRoom: "Bli med i rommet mitt", qrAlt: "QR-kode for å bli med i rommet", roomLink: "Romlenke",
     },
     words: {
-      progressLead: "Dine ord", plenty: "✓ det holder, legg til flere om du vil",
+      progressLead: "Dine ord", plenty: "✓ det holder",
       toGo: ({ n }) => `${n} igjen`, typeWord: "Skriv et ord…",
       fillMine: ({ n }) => `Fyll mine ${n} fra Murrays kortstokk`,
       hidden: "Ordene dine er skjult for alle til de er i spill.",

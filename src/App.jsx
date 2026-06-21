@@ -503,7 +503,7 @@ function HostLobby({ state, dispatch, hostId, roomCode, peerStatus, onExit }) {
       {tab === 2 && (
         <div className="fb-card fb-stack">
           <h2 className="fb-h2">{t("lobby.theBowl")}</h2>
-          <p className="fb-muted"><b className="fb-num">{state.bowl.length}</b> {t("lobby.bowlInfo", { x: WORDS_PER_PLAYER })}</p>
+          <p className="fb-muted"><b className="fb-num">{state.bowl.length}</b> {t("lobby.bowlInfo")}</p>
           <WordAdder onAdd={(ws) => dispatch({ type: "ADD_WORDS", words: ws, by: hostId })}
             count={state.wordCounts[hostId] || 0} target={WORDS_PER_PLAYER} />
           <DeckFill bowl={state.bowl} players={state.players.length}
