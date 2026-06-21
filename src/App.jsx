@@ -471,6 +471,7 @@ function HostLobby({ state, dispatch, hostId, roomCode, peerStatus, onExit }) {
 
       {tab === 0 && (<>
         <RoomShare code={roomCode} status={peerStatus} connected={clients} />
+        <Arrivals players={state.players} myId={hostId} />
         <button className="fb-btn fb-ghost" onClick={() => setTab(1)}>{t("lobby.nextGroups")}</button>
       </>)}
 
@@ -1064,7 +1065,30 @@ function RoomShare({ code, status, connected }) {
         <button className="fb-btn" onClick={copy}>{copied ? t("share.copied") : t("share.copyLink")}</button>
         {canShare && <button className="fb-btn fb-ghost" onClick={share}>{t("share.shareDots")}</button>}
       </div>
-      <p className="fb-tiny">{t("share.connectedCount", { n: connected })}</p>
+    </div>
+  );
+}
+// The live "who's here" roster on the Invite tab: every connected player
+// pops in as a little minifigure (shirt in their own colour) with their name,
+// so the host watches their crew arrive instead of a bare count.
+function Arrivals({ players, myId }) {
+  const t = useT();
+  const here = players.filter((p) => p.connected !== false);
+  const someoneJoined = here.some((p) => !p.isHost);
+  return (
+    <div className="fb-card fb-stack">
+      <h2 className="fb-h2">{t("arrivals.title", { n: here.length })}</h2>
+      <div className="fb-arrlist">
+        {here.map((p, i) => (
+          <span key={p.id} className="fb-arrchip" style={{ "--accent": PALETTE[i % PALETTE.length] }}>
+            <MurrayPix size={22} />
+            <b>{p.name}</b>
+            {p.isHost && <span className="fb-arrtag">{t("host.host")}</span>}
+            {p.id === myId && !p.isHost && <span className="fb-arrtag">you</span>}
+          </span>
+        ))}
+        {!someoneJoined && <span className="fb-arrwait">{t("arrivals.waiting")}</span>}
+      </div>
     </div>
   );
 }
@@ -1256,6 +1280,18 @@ const CSS = `
 .fb-chip{background:#fff;border:2px solid var(--ink);border-radius:999px;padding:6px 11px;color:var(--ink);font-size:13px;display:inline-flex;align-items:center;gap:7px;}
 .fb-chip.off{opacity:.5;border-style:dashed;}
 .fb-chip.off .fb-dot{background:var(--muted);}
+/* live arrivals roster - players pop in as little minifigures */
+.fb-arrlist{display:flex;flex-wrap:wrap;gap:9px;}
+.fb-arrchip{display:inline-flex;align-items:center;gap:7px;background:#fff;border:2.5px solid var(--ink);border-radius:9px;
+  box-shadow:3px 3px 0 var(--ink);padding:5px 11px 5px 7px;font-size:14px;animation:arrpop .34s cubic-bezier(.2,.9,.3,1.35);}
+.fb-arrchip svg{display:block;flex:none;}
+.fb-arrchip b{font-family:Archivo,sans-serif;font-weight:800;color:var(--ink);}
+.fb-arrtag{font-family:'Space Mono',monospace;font-size:9px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:#fff;
+  background:var(--accent);border:1.5px solid var(--ink);border-radius:4px;padding:1px 5px;}
+@keyframes arrpop{0%{transform:translateY(-9px) scale(.55);opacity:0;}60%{transform:translateY(0) scale(1.1);}100%{transform:scale(1);opacity:1;}}
+.fb-arrwait{display:inline-flex;align-items:center;font-family:'Space Mono',monospace;font-size:12px;color:var(--muted);
+  border:2px dashed var(--line);border-radius:9px;padding:9px 13px;animation:arrpulse 1.7s ease-in-out infinite;}
+@keyframes arrpulse{50%{opacity:.45;}}
 .fb-teampick{display:flex;gap:8px;flex-wrap:wrap;}
 .fb-teambtn{flex:1 1 40%;background:#fff;border:2.5px solid var(--ink);border-radius:6px;padding:12px;color:var(--muted);font-weight:800;font-family:inherit;font-size:15px;cursor:pointer;}
 .fb-teambtn.on{border-color:var(--tc);color:var(--tc);box-shadow:3px 3px 0 var(--tc);}
@@ -1367,5 +1403,6 @@ const CSS = `
 
 @media (prefers-reduced-motion:reduce){
   .fb-vtimer.pulse{animation:none;}.fb-vt-disc{transition:none;}.fb-btn{transition:none;}.fb-slip{animation:none;}
+  .fb-arrchip{animation:none;}.fb-arrwait{animation:none;}
 }
 `;

@@ -74,6 +74,7 @@ const STRINGS = {
       addMore: ({ n }) => `Add ${n} more words`,
       needGroup: "Everyone needs a group", needTwo: "Need 2 groups with players",
     },
+    arrivals: { title: ({ n }) => `Who's here · ${n}`, waiting: "Waiting for players to pop in…" },
     client: {
       joinRoom: "Join a room",
       joiningRoom: ({ code }) => ["Joining room ", { b: code }, ". Just pop your name in."],
@@ -171,6 +172,7 @@ const STRINGS = {
       addMore: ({ n }) => `Legg til ${n} ord til`,
       needGroup: "Alle trenger en gruppe", needTwo: "Trenger 2 grupper med spillere",
     },
+    arrivals: { title: ({ n }) => `Hvem er her · ${n}`, waiting: "Venter på at spillere dukker opp…" },
     client: {
       joinRoom: "Bli med i et rom",
       joiningRoom: ({ code }) => ["Blir med i rom ", { b: code }, ". Bare skriv inn navnet ditt."],
