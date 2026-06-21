@@ -702,7 +702,7 @@ function ReconnectBanner({ show, online }) {
   const label = online ? t("reconnect.online") : t("reconnect.offline");
   return (
     <div className={`fb-reconnect ${online ? "" : "offline"}`} role="status" title={label} aria-label={label}>
-      <span className="fb-reconnect-ico" aria-hidden="true">⟳</span>
+      <LoaderIcon className="fb-reconnect-ico" />
     </div>
   );
 }

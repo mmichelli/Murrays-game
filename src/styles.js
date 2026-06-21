@@ -101,7 +101,7 @@ export const CSS = `
   display:flex;align-items:center;justify-content:center;background:var(--amber);color:var(--ink);
   border:2.5px solid var(--ink);box-shadow:3px 3px 0 var(--ink);}
 .fb-reconnect.offline{background:#9AA0A8;}
-.fb-reconnect-ico{font-size:19px;line-height:1;font-weight:700;animation:fbspin 1s linear infinite;}
+.fb-reconnect-ico{width:20px;height:20px;vertical-align:0;transform-origin:50% 50%;animation:fbspin 1s linear infinite;}
 .fb-reconnect.offline .fb-reconnect-ico{animation:none;}
 @keyframes fbspin{to{transform:rotate(360deg);}}
 @media (prefers-reduced-motion:reduce){.fb-reconnect-ico{animation:none;}}
