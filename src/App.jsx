@@ -402,8 +402,10 @@ function HostApp({ onExit }) {
 }
 
 function HostLobby({ state, dispatch, hostId, roomCode, peerStatus, onExit }) {
-  const t = useT();
+  const { lang, t } = useLang();
   const [tab, setTab] = useState(0);
+  // Add a group under a fun, themed name, skipping ones already in play.
+  const addTeam = () => dispatch({ type: "ADD_TEAM", name: randomTeamName(lang, state.teams.map((tm) => tm.name)) });
   const color = (i) => PALETTE[i % PALETTE.length];
   // Gate on connected players only, so a phone that's briefly offline (kept in
   // the room for continuity) doesn't block the start or count as "joined".
