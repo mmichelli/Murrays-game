@@ -183,9 +183,11 @@ export const CSS = `
 .fb-roundline{display:flex;flex-direction:column;gap:6px;align-items:flex-start;}
 .fb-center .fb-roundline{align-items:center;}
 .fb-roundtag{font-family:'Space Mono',monospace;font-weight:700;font-size:12px;letter-spacing:.1em;text-transform:uppercase;color:var(--accent);}
-.fb-dots{display:inline-flex;gap:5px;}
-.fb-pip{width:8px;height:8px;border-radius:50%;border:1.6px solid var(--accent);box-sizing:border-box;}
-.fb-pip.on{background:var(--accent);}
+/* themed round-progress strip under the card: one dot per round, in its colour */
+.fb-progress{display:flex;gap:13px;justify-content:center;align-items:center;margin:16px auto 0;}
+.fb-progdot{width:16px;height:16px;border-radius:50%;border:2.5px solid var(--ink);background:var(--panel);box-shadow:2px 2px 0 var(--ink);box-sizing:border-box;flex:none;transition:transform .12s;}
+.fb-progdot.done{background:var(--dc);}
+.fb-progdot.now{width:24px;height:24px;background:var(--dc);box-shadow:3px 3px 0 var(--ink);}
 
 /* Time Timer-style disc - a depleting wedge on a clock face. */
 @property --fbdeg{syntax:'<angle>';inherits:false;initial-value:360deg;}

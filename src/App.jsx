@@ -697,6 +697,7 @@ function GameView({ view, onIntent, optimistic = false }) {
       {view.phase === "play" && <Play v={view} onIntent={onIntent} optimistic={optimistic} />}
       {view.phase === "transition" && <Transition v={view} onIntent={onIntent} />}
       {view.phase === "endgame" && <Endgame v={view} />}
+      {(view.phase === "ready" || view.phase === "play") && view.round && <RoundProgress n={view.round.n} />}
     </div>
   );
 }
@@ -730,12 +731,19 @@ function useGiverWord(view, optimistic) {
     bump: () => setPending((p) => p + 1),
   };
 }
-const RoundDots = ({ n }) => (
-  <span className="fb-dots" aria-hidden="true">{[1, 2, 3, 4, 5].map((i) => <span key={i} className={`fb-pip ${i <= n ? "on" : ""}`} />)}</span>
+// A bold, themed round-progress strip shown under the card: one dot per
+// round in that round's own colour - filled for done + current, hollow for
+// the rounds still ahead, with the current round enlarged.
+const RoundProgress = ({ n }) => (
+  <div className="fb-progress" role="img" aria-label={`Round ${n} of 5`}>
+    {ROUNDS.map((r) => (
+      <span key={r.n} className={`fb-progdot ${r.n < n ? "done" : r.n === n ? "now" : ""}`} style={{ "--dc": r.accent }} />
+    ))}
+  </div>
 );
 const RoundLine = ({ r }) => {
   const t = useT();
-  return <div className="fb-roundline"><span className="fb-roundtag"><RoundIcon n={r.n} /> {t(`round.${r.n}.name`)}</span><RoundDots n={r.n} /></div>;
+  return <div className="fb-roundline"><span className="fb-roundtag"><RoundIcon n={r.n} /> {t(`round.${r.n}.name`)}</span></div>;
 };
 const Rules = ({ r, tight }) => {
   const t = useT();
@@ -773,11 +781,9 @@ function Ready({ v, onIntent }) {
         <button className="fb-btn fb-big" onClick={() => onIntent("CLAIM_AND_BEGIN")}>{tr("ready.illGive", { n: TURN_SECONDS })}</button>
       </>) : mineUp ? (
         <p className="fb-muted">{tr("ready.someone")}</p>
-      ) : myTeam ? (
-        <p className="fb-muted">{tr("ready.sitTight")}</p>
-      ) : (
+      ) : !myTeam ? (
         <p className="fb-muted">{tr("ready.watch")}</p>
-      )}
+      ) : null}
       <YouBadge team={myTeam} />
       <Standings v={v} />
     </div>
@@ -905,7 +911,7 @@ function Transition({ v, onIntent }) {
         <div className="fb-flash big">{tr("trans.roundOver")}</div>
         <p className="fb-paused">{tr("trans.pausedLead")} <b>{v.timeLeft}s</b> {tr("trans.pausedLeft")}</p>
         <div className="fb-nextsetup"><span className="fb-nextsetuphead"><RoundIcon n={r.n} /> <Tr value={tr("trans.roundIs", { n: r.n, name: tr(`round.${r.n}.name`).toUpperCase() })} /></span><span>{tr(`round.${r.n}.setup`)}</span></div>
-        <RoundDots n={r.n} />
+        <RoundProgress n={r.n} />
         <Rules r={r} />
         {v.canResume ? <button className="fb-btn fb-big" onClick={() => onIntent("RESUME")}>{tr("trans.resume")}</button>
           : <p className="fb-muted">{tr("trans.waitResume", { name: v.activeName })}</p>}
