@@ -216,8 +216,8 @@ export const CSS = `
 @keyframes slipdrop{from{transform:translateY(-18px) rotate(2.5deg);opacity:0;}to{transform:translateY(0) rotate(-1.1deg);opacity:1;}}
 .fb-word{position:relative;z-index:0;font-family:Anton,'Arial Narrow',sans-serif;text-transform:uppercase;text-align:center;
   font-size:clamp(40px,13vw,78px);line-height:1.02;letter-spacing:.01em;color:var(--ink);white-space:nowrap;}
-.fb-word::before{content:attr(data-word);position:absolute;inset:0;color:var(--accent);transform:translate(3px,4px);
-  mix-blend-mode:multiply;z-index:-1;}
+.fb-word::before{content:attr(data-word);position:absolute;inset:0;color:var(--accent);transform:translate(2px,2px);
+  opacity:.5;z-index:-1;}
 
 .fb-watch{text-align:center;padding:24px 8px;}.fb-watch p{margin:0 0 6px;}
 .fb-rules{display:flex;flex-direction:column;gap:6px;font-size:13.5px;color:var(--muted);border-top:1.5px dashed var(--line);padding-top:11px;}
@@ -241,13 +241,12 @@ export const CSS = `
 
 .fb-standings{display:flex;flex-wrap:wrap;gap:14px;justify-content:center;width:100%;box-sizing:border-box;color:var(--muted);font-size:13px;background:var(--panel);border:2.5px solid var(--ink);box-shadow:4px 4px 0 var(--ink);border-radius:6px;padding:11px 12px;margin-top:6px;font-family:'Space Mono',monospace;}
 .fb-standings b{font-family:Anton,sans-serif;font-weight:400;font-size:18px;vertical-align:-2px;}
-.fb-stand{display:inline-flex;align-items:center;gap:4px;}
+.fb-stand{display:inline-flex;align-items:center;gap:5px;}
+/* your own team, marked right in the score box */
+.fb-stand.mine{background:#fff;border:2px solid currentColor;border-radius:999px;padding:2px 10px;box-shadow:2px 2px 0 currentColor;}
+.fb-youtag{font-family:'Space Mono',monospace;font-size:9px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:#fff;border-radius:4px;padding:1px 5px;}
 /* whose turn it is - an eyebrow above the big team name */
 .fb-uplabel{font-family:'Space Mono',monospace;font-weight:700;font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:var(--muted);margin-bottom:-6px;}
-/* which side you're on - a persistent, colour-coded marker */
-.fb-youbadge{display:inline-flex;align-items:center;gap:7px;align-self:center;font-family:'Space Mono',monospace;font-size:12px;
-  color:var(--ink);background:#fff;border:2px solid var(--ink);border-left:6px solid var(--tc);border-radius:6px;padding:5px 12px;}
-.fb-youbadge b{color:var(--tc);font-weight:700;}
 
 .fb-modal{position:fixed;inset:0;background:rgba(20,26,34,.55);backdrop-filter:blur(3px);display:flex;align-items:center;justify-content:center;padding:18px;z-index:50;}
 .fb-modal .fb-card{max-width:500px;width:100%;}

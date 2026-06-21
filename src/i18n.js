@@ -91,7 +91,6 @@ const STRINGS = {
       someone: 'Someone tap "I\'ll give clues" on their phone.',
       watch: "Watch the room.",
     },
-    youbadge: { lead: "You're on" },
     timer: { sec: "sec", secsLeft: ({ n }) => `${n} seconds left` },
     rules: { allowed: "Allowed", never: "Never" },
     play: {
@@ -181,7 +180,6 @@ const STRINGS = {
       someone: 'Noen må trykke "Jeg gir hint" på telefonen sin.',
       watch: "Følg med i rommet.",
     },
-    youbadge: { lead: "Du er på" },
     timer: { sec: "sek", secsLeft: ({ n }) => `${n} sekunder igjen` },
     rules: { allowed: "Tillatt", never: "Aldri" },
     play: {

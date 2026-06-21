@@ -753,16 +753,6 @@ const Rules = ({ r, tight }) => {
     </div>
   );
 };
-// A persistent "this is your team" marker so a player always knows which
-// side they're on, separate from whichever team is currently up.
-const YouBadge = ({ team }) => {
-  const t = useT();
-  return team ? (
-    <div className="fb-youbadge" style={{ "--tc": team.color }}>
-      <span className="fb-dot" /> {t("youbadge.lead")} <b>{team.name}</b>
-    </div>
-  ) : null;
-};
 function Ready({ v, onIntent }) {
   const tr = useT();
   const r = v.round;
@@ -784,7 +774,6 @@ function Ready({ v, onIntent }) {
       ) : !myTeam ? (
         <p className="fb-muted">{tr("ready.watch")}</p>
       ) : null}
-      <YouBadge team={myTeam} />
       <Standings v={v} />
     </div>
   );
@@ -879,7 +868,6 @@ function WordSlip({ word }) {
 function Play({ v, onIntent, optimistic }) {
   const tr = useT();
   const r = v.round;
-  const myTeam = v.teams.find((t) => t.id === v.myTeamId);
   const { shown, canBuffer, bump } = useGiverWord(v, optimistic);
   const onCorrect = () => { onIntent("CORRECT"); if (optimistic && canBuffer) bump(); };
   return (
@@ -897,7 +885,6 @@ function Play({ v, onIntent, optimistic }) {
           <p className="fb-tiny">{tr("play.guessOut")}</p>
         </div>
       )}
-      <YouBadge team={myTeam} />
       <Standings v={v} />
     </div>
   );
@@ -942,13 +929,20 @@ function Endgame({ v }) {
     </div>
   );
 }
+// The score box also marks which team is yours (a coloured "you" chip),
+// so there's no need for a separate "you're on" badge.
 function Standings({ v }) {
   const total = (id) => v.scores[id].reduce((a, b) => a + b, 0);
   return (
     <div className="fb-standings">
-      {v.teams.map((t) => (
-        <span key={t.id} className="fb-stand" style={{ color: t.color }}>{t.name} <b>{total(t.id)}</b></span>
-      ))}
+      {v.teams.map((t) => {
+        const mine = t.id === v.myTeamId;
+        return (
+          <span key={t.id} className={`fb-stand ${mine ? "mine" : ""}`} style={{ color: t.color }}>
+            {t.name} <b>{total(t.id)}</b>{mine && <span className="fb-youtag" style={{ background: t.color }}>you</span>}
+          </span>
+        );
+      })}
     </div>
   );
 }
