@@ -1246,7 +1246,7 @@ const CSS = `
 .fb-wordprog b{font-family:Anton,sans-serif;font-weight:400;font-size:16px;color:var(--accent);vertical-align:-2px;margin:0 2px;}
 .fb-wordprog.done{color:var(--green);}.fb-wordprog.done b{color:var(--green);}
 /* "Wordlist"/"Your words" headings + inline tally */
-.fb-yourwords{display:flex;align-items:baseline;gap:9px;flex-wrap:wrap;}
+.fb-yourwords{display:flex;align-items:baseline;gap:9px;flex-wrap:wrap;margin-top:8px;}
 .fb-yourwordsnum{font-family:Anton,sans-serif;font-weight:400;font-size:19px;color:var(--accent);}
 .fb-wordhint{margin:-6px 0 0;font-family:'Space Mono',monospace;font-size:11px;letter-spacing:.04em;text-transform:uppercase;color:var(--muted);}
 .fb-wordhint.done{color:var(--green);}
