@@ -97,7 +97,7 @@ const STRINGS = {
     rules: { allowed: "Allowed", never: "Never" },
     play: {
       correct: "CORRECT", spacebar: "(Spacebar)",
-      noSkip: "No skipping. Resolve it or run out the clock.",
+      noSkip: "No skipping.",
       givingFor: "is giving clues for",
       guessOut: "Guess out loud. The word stays on their phone.",
     },
@@ -188,7 +188,7 @@ const STRINGS = {
     rules: { allowed: "Tillatt", never: "Aldri" },
     play: {
       correct: "RIKTIG", spacebar: "(Mellomrom)",
-      noSkip: "Ingen hopping. Løs det eller la tiden gå ut.",
+      noSkip: "Ingen hopping.",
       givingFor: "gir hint for",
       guessOut: "Gjett høyt. Ordet blir på telefonen deres.",
     },
