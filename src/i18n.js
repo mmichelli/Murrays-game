@@ -97,7 +97,6 @@ const STRINGS = {
       correct: "CORRECT", spacebar: "(Spacebar)",
       noSkip: "No skipping. Resolve it or run out the clock.",
       givingFor: "is giving clues for",
-      guessOut: "Guess out loud. The word stays on their phone.",
     },
     trans: {
       roundOver: "⏸ Round over mid-turn", pausedLead: "Paused ·", pausedLeft: "left",
@@ -186,7 +185,6 @@ const STRINGS = {
       correct: "RIKTIG", spacebar: "(Mellomrom)",
       noSkip: "Ingen hopping. Løs det eller la tiden gå ut.",
       givingFor: "gir hint for",
-      guessOut: "Gjett høyt. Ordet blir på telefonen deres.",
     },
     trans: {
       roundOver: "⏸ Runden er over midt i turen", pausedLead: "Pauset ·", pausedLeft: "igjen",
