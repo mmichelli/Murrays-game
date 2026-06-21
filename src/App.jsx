@@ -1114,7 +1114,7 @@ function WordAdder({ onAdd, onRemove, words = [], count = 0, target = 0 }) {
   return (
     <div className="fb-stack">
       <h2 className="fb-h1 fb-yourwords">{t("words.progressLead")}{target > 0 && <span className="fb-yourwordsnum">{count}/{target}</span>}</h2>
-      {target > 0 && <p className={`fb-wordhint ${done ? "done" : ""}`}>{done ? t("words.plenty") : t("words.toGo", { n: remaining })}</p>}
+      {done && <p className="fb-wordhint done">{t("words.plenty")}</p>}
       <div className="fb-row">
         <input className="fb-input" value={draft} placeholder={t("words.typeWord")} maxLength={40} autoFocus
           onChange={(e) => setDraft(e.target.value)} onKeyDown={(e) => e.key === "Enter" && add()} />
