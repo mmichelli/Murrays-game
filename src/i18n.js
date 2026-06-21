@@ -60,7 +60,8 @@ const STRINGS = {
       named: "Named after Murray, the varsity mate who first taught us to play.",
     },
     host: {
-      hosting: "You're hosting", createRoom: "Create the room", host: "Host",
+      hosting: "You're hosting", createRoom: "Create the game", host: "Host",
+      keepOpen: "📌 Heads up - your phone runs the game. Keep this page open the whole time you play; if it closes, the game ends for everyone.",
       forceNext: "Force next turn", endGame: "End game", playAgain: "Play again, same wordlist",
     },
     steps: { invite: "Invite", groups: "Groups", bowl: "Wordlist" },
@@ -156,7 +157,8 @@ const STRINGS = {
       named: "Oppkalt etter Murray, studiekompisen som først lærte oss å spille.",
     },
     host: {
-      hosting: "Du er vert", createRoom: "Opprett rommet", host: "Vert",
+      hosting: "Du er vert", createRoom: "Lag spillet", host: "Vert",
+      keepOpen: "📌 Obs - telefonen din kjører spillet. Hold denne siden åpen hele tiden mens dere spiller; lukkes den, avsluttes spillet for alle.",
       forceNext: "Tving neste tur", endGame: "Avslutt spillet", playAgain: "Spill igjen, samme ordliste",
     },
     steps: { invite: "Inviter", groups: "Grupper", bowl: "Ordliste" },

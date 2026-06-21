@@ -409,6 +409,7 @@ function HostApp({ onExit }) {
           <h1 className="fb-h1">{t("host.hosting")}</h1>
           <label className="fb-label">{t("common.yourName")}<input className="fb-input" value={name} onChange={(e) => setName(e.target.value)} maxLength={20} /></label>
           <button className="fb-btn" disabled={!name.trim()} onClick={openRoom}>{t("host.createRoom")}</button>
+          <p className="fb-hostnote">{t("host.keepOpen")}</p>
         </div>
       );
   }
@@ -1185,6 +1186,8 @@ const CSS = `
 .fb-muted{color:var(--muted);margin:0;font-size:15px;line-height:1.62;}
 .fb-muted b{color:var(--ink);}
 .fb-tiny{color:var(--muted);font-size:12px;margin:0;font-family:'Space Mono',monospace;}
+.fb-hostnote{margin:2px 0 0;font-family:'Space Mono',monospace;font-size:11.5px;line-height:1.55;color:var(--ink);
+  background:var(--panel);border:2.5px solid var(--ink);border-radius:6px;box-shadow:3px 3px 0 var(--accent);padding:11px 13px;text-align:left;}
 .fb-num{font-family:Anton,sans-serif;font-weight:400;font-size:20px;color:var(--accent);vertical-align:-1px;margin-right:4px;}
 .fb-link{background:none;border:none;color:var(--muted);font-size:13px;cursor:pointer;font-family:inherit;text-decoration:underline;padding:4px;}
 
