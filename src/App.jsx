@@ -882,6 +882,7 @@ function Play({ v, onIntent, optimistic }) {
       </>) : (
         <div className="fb-watch">
           <p>{v.activeName} {tr("play.givingFor")} <b style={{ color: v.teamUpColor }}>{v.teamUpName}</b>.</p>
+          {v.myTeamId === v.teamUpId && <p className="fb-tiny">{tr("play.guessOut")}</p>}
         </div>
       )}
       <Standings v={v} />
