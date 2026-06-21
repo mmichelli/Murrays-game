@@ -120,10 +120,12 @@ describe("roundText", () => {
       const t = makeT(lang);
       ROUNDS.forEach((r) => {
         const rt = roundText(t, r.n);
-        ["name", "setup", "allowed", "restrict", "gloss"].forEach((f) => {
+        // setup is optional (rounds 1-3 need no extra instruction); the rest copy.
+        ["name", "allowed", "restrict", "gloss"].forEach((f) => {
           expect(typeof rt[f]).toBe("string");
           expect(rt[f].length).toBeGreaterThan(0);
         });
+        expect(typeof rt.setup).toBe("string");
       });
     }
   });

@@ -775,7 +775,7 @@ function Ready({ v, onIntent }) {
       <div className="fb-uplabel">{mineUp ? tr("ready.yourTurn") : tr("ready.nowUp")}</div>
       <FitText className="fb-h1 fb-xl" style={{ color: v.teamUpColor }} text={v.teamUpName} min={20} />
       {v.canClaim ? (<>
-        <p className="fb-muted">{tr(`round.${r.n}.setup`)}</p>
+        {tr(`round.${r.n}.setup`) && <p className="fb-muted">{tr(`round.${r.n}.setup`)}</p>}
         {v.inherited && <p className="fb-inherit">{tr("ready.inherit")}</p>}
         <Rules r={r} />
         <button className="fb-btn fb-big" onClick={() => onIntent("CLAIM_AND_BEGIN")}>{tr("ready.illGive", { n: TURN_SECONDS })}</button>
@@ -910,7 +910,7 @@ function Transition({ v, onIntent }) {
       <div className="fb-card fb-stack fb-center">
         <div className="fb-flash big">{tr("trans.roundOver")}</div>
         <p className="fb-paused">{tr("trans.pausedLead")} <b>{v.timeLeft}s</b> {tr("trans.pausedLeft")}</p>
-        <div className="fb-nextsetup"><span className="fb-nextsetuphead"><RoundIcon n={r.n} /> <Tr value={tr("trans.roundIs", { n: r.n, name: tr(`round.${r.n}.name`).toUpperCase() })} /></span><span>{tr(`round.${r.n}.setup`)}</span></div>
+        <div className="fb-nextsetup"><span className="fb-nextsetuphead"><RoundIcon n={r.n} /> <Tr value={tr("trans.roundIs", { n: r.n, name: tr(`round.${r.n}.name`).toUpperCase() })} /></span>{tr(`round.${r.n}.setup`) && <span>{tr(`round.${r.n}.setup`)}</span>}</div>
         <RoundProgress n={r.n} />
         <Rules r={r} />
         {v.canResume ? <button className="fb-btn fb-big" onClick={() => onIntent("RESUME")}>{tr("trans.resume")}</button>
