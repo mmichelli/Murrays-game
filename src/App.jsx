@@ -846,7 +846,7 @@ function FitText({ text, className, style, max = 58, min = 24 }) {
 // instead of breaking ugly mid-word; only past the minimum size do we let
 // it wrap. The misregistration ghost (::before) inherits the same size.
 const WORD_MAX = 78, WORD_MIN = 30;
-function WordSlip({ word }) {
+function WordSlip({ word, onClick }) {
   const slipRef = useRef(null);
   const wordRef = useRef(null);
   useLayoutEffect(() => {
@@ -859,8 +859,12 @@ function WordSlip({ word }) {
     const cancel = fitWithFont(fit);
     return () => { ro.disconnect(); cancel(); };
   }, [word]);
+  // The whole card doubles as a CORRECT button (tap or Enter), alongside the
+  // CORRECT button below it.
+  const tap = onClick ? { role: "button", tabIndex: 0, "aria-label": "Mark correct",
+    onClick, onKeyDown: (e) => { if (e.key === "Enter") { e.preventDefault(); onClick(); } } } : {};
   return (
-    <div className="fb-slip" ref={slipRef} key={word}>
+    <div className={`fb-slip ${onClick ? "tap" : ""}`} ref={slipRef} key={word} {...tap}>
       <div className="fb-word" data-word={word} ref={wordRef}>{word}</div>
     </div>
   );
@@ -875,7 +879,7 @@ function Play({ v, onIntent, optimistic }) {
       <RoundLine r={r} />
       <VisualTimer timeLeft={v.timeLeft} total={TURN_SECONDS} />
       {v.isActive ? (<>
-        <WordSlip word={shown} />
+        <WordSlip word={shown} onClick={onCorrect} />
         <Rules r={r} tight />
         <button className="fb-btn fb-correct" onClick={onCorrect}>{tr("play.correct")} <span>{tr("play.spacebar")}</span></button>
         <p className="fb-noskip">{tr("play.noSkip")}</p>

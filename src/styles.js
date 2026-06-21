@@ -211,6 +211,10 @@ export const CSS = `
 
 .fb-slip{position:relative;align-self:center;max-width:100%;background:var(--slip);padding:26px 20px 22px;border-radius:4px;border:4px solid var(--ink);
   box-shadow:8px 8px 0 var(--ink);transform:rotate(-1deg);animation:slipdrop .28s cubic-bezier(.2,.85,.3,1);}
+.fb-slip.tap{cursor:pointer;transition:box-shadow .08s;}
+.fb-slip.tap:hover{box-shadow:10px 10px 0 var(--ink);}
+.fb-slip.tap:active{box-shadow:3px 3px 0 var(--ink);}
+.fb-slip.tap:focus-visible{outline:3px solid var(--accent);outline-offset:4px;}
 .fb-slip::before{content:"";position:absolute;top:-2px;left:10px;right:10px;height:8px;
   background:radial-gradient(circle at 6px -2px, var(--paper) 0 5px, transparent 5.5px) repeat-x;background-size:12px 8px;}
 @keyframes slipdrop{from{transform:translateY(-18px) rotate(2.5deg);opacity:0;}to{transform:translateY(0) rotate(-1.1deg);opacity:1;}}
