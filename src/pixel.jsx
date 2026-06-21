@@ -9,6 +9,7 @@ import oneWordSvg from "pixelarticons/svg/comment.svg?raw";
 import handsSvg from "pixelarticons/svg/hand.svg?raw";
 import faceSvg from "pixelarticons/svg/smile.svg?raw";
 import alarmSvg from "pixelarticons/svg/alarm-clock.svg?raw";
+import loaderSvg from "pixelarticons/svg/loader.svg?raw";
 
 // Render a raw Pixelarticons SVG inline so it inherits the surrounding text
 // colour and scales with the font size via CSS.
@@ -25,6 +26,7 @@ const RawIcon = ({ svg, className = "" }) => svg
 const ROUND_SVG = { 1: describeSvg, 2: charadesSvg, 3: oneWordSvg, 4: handsSvg, 5: faceSvg };
 export const RoundIcon = ({ n, className = "" }) => <RawIcon svg={ROUND_SVG[n]} className={className} />;
 export const AlarmIcon = ({ className = "" }) => <RawIcon svg={alarmSvg} className={className} />;
+export const LoaderIcon = ({ className = "" }) => <RawIcon svg={loaderSvg} className={className} />;
 
 /* ------------------------- Murray, the mate ----------------------- *
  * The namesake, as a pixel minifigure: yellow head, dot eyes and a

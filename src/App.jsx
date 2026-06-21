@@ -4,7 +4,7 @@ import {
   uid, initial, viewFor, createHostHub, peerOptions,
 } from "./engine.js";
 import { LANGS, detectLang, saveLang, makeT } from "./i18n.js";
-import { RoundIcon, MurrayPix, AlarmIcon } from "./pixel.jsx";
+import { RoundIcon, MurrayPix, AlarmIcon, LoaderIcon } from "./pixel.jsx";
 import { CSS } from "./styles.js";
 
 /* ---------------------------- language ---------------------------- *
@@ -541,12 +541,14 @@ function ClientApp({ onExit, initialRoom }) {
       if (pendingTeamRef.current !== undefined) conn.send(JSON.stringify({ t: "setTeam", teamId: pendingTeamRef.current }));
     });
     conn.on("data", (d) => { try { const m = JSON.parse(d); if (m.t === "lobby") setLobby(m.lobby); else if (m.t === "view") setView(m.view); } catch {} });
-    conn.on("close", () => { clearTimeout(dialTimeout); if (aliveRef.current) scheduleRetry(); });
-    conn.on("error", () => { clearTimeout(dialTimeout); if (aliveRef.current) scheduleRetry(); });
+    // These only matter while `conn` is still our live connection - once we've
+    // moved on (connRef nulled / replaced), a late event must not retry again.
+    conn.on("close", () => { clearTimeout(dialTimeout); if (aliveRef.current && connRef.current === conn) scheduleRetry(); });
+    conn.on("error", () => { clearTimeout(dialTimeout); if (aliveRef.current && connRef.current === conn) scheduleRetry(); });
     // A clean "close" doesn't always fire when WebRTC dies - watch the ICE
     // state so a silent failure still kicks off a reconnect.
     conn.on("iceStateChanged", (st) => {
-      if (!aliveRef.current) return;
+      if (!aliveRef.current || connRef.current !== conn) return;
       if (st === "failed") scheduleRetry();
       else if (st === "disconnected") setReconnecting(true); // may recover on its own
     });
@@ -568,12 +570,12 @@ function ClientApp({ onExit, initialRoom }) {
     });
   }
   // Tear down the live connection and re-establish a clean one after a backoff.
+  // A retry is already pending? Leave it - re-entrancy here is what used to wedge
+  // the join: closing the conn fires its own 'close' handler synchronously, which
+  // calls back in, racing a second peer into life. One timer at a time.
   function scheduleRetry() {
-    if (!aliveRef.current) return;
+    if (!aliveRef.current || timerRef.current) return;
     setReconnecting(true);
-    clearTimeout(timerRef.current);
-    try { connRef.current?.close(); } catch {}
-    connRef.current = null;
     // Genuinely offline (airplane mode, wifi off)? Don't burn retries - the
     // browser's 'online' event fires the moment the network is back and
     // reconnects us straight away. (onLine can be true with no real internet,
@@ -582,9 +584,14 @@ function ClientApp({ onExit, initialRoom }) {
     const n = retryRef.current++;
     const delay = Math.min(1000 * 2 ** Math.min(n, 3), 8000); // 1s,2s,4s,8s…
     timerRef.current = setTimeout(() => {
+      timerRef.current = null;
       if (!aliveRef.current) return;
-      try { peerRef.current?.destroy(); } catch {}
-      peerRef.current = null;
+      // Null the refs *before* tearing down, so any late close/error from the
+      // dying conn or peer sees connRef.current !== conn and stays quiet.
+      const deadConn = connRef.current, deadPeer = peerRef.current;
+      connRef.current = null; peerRef.current = null;
+      try { deadConn?.close(); } catch {}
+      try { deadPeer?.destroy(); } catch {}
       spinUp();
     }, delay);
   }
@@ -594,9 +601,12 @@ function ClientApp({ onExit, initialRoom }) {
     if (!aliveRef.current) return;
     if (connRef.current && connRef.current.open) return;
     if (typeof document !== "undefined" && document.visibilityState && document.visibilityState !== "visible") return;
-    retryRef.current = 0; clearTimeout(timerRef.current);
-    try { peerRef.current?.destroy(); } catch {}
-    peerRef.current = null;
+    retryRef.current = 0;
+    clearTimeout(timerRef.current); timerRef.current = null;
+    const deadConn = connRef.current, deadPeer = peerRef.current;
+    connRef.current = null; peerRef.current = null;
+    try { deadConn?.close(); } catch {}
+    try { deadPeer?.destroy(); } catch {}
     spinUp();
   }
   // Begin (or resume) a connection to the room with a known name + code.
@@ -706,7 +716,7 @@ function ConnSteps({ stage }) {
     <ol className="fb-connsteps">
       {labels.map((label, i) => (
         <li key={i} className={`fb-connstep ${i < stage ? "done" : i === stage ? "now" : ""}`}>
-          <span className="fb-connmark" aria-hidden="true">{i < stage ? "✓" : i === stage ? "⟳" : ""}</span>{label}
+          <span className="fb-connmark" aria-hidden="true">{i < stage ? "✓" : i === stage ? <LoaderIcon /> : ""}</span>{label}
         </li>
       ))}
     </ol>
