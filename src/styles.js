@@ -227,7 +227,7 @@ export const CSS = `
 .fb-rules{display:flex;flex-direction:column;gap:6px;font-size:13.5px;color:var(--muted);border-top:1.5px dashed var(--line);padding-top:11px;}
 .fb-rules.tight{border-top:none;padding-top:0;}
 .fb-rules b{font-family:'Space Mono',monospace;font-weight:700;font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--ink);margin-right:7px;}
-.fb-correct{display:flex;flex-direction:column;align-items:center;gap:2px;background:var(--accent);color:var(--ink);border:3px solid var(--ink);font-family:Anton,sans-serif;font-weight:400;font-size:26px;letter-spacing:.04em;padding:18px 20px;box-shadow:6px 6px 0 var(--ink);}
+.fb-correct{display:flex;flex-direction:column;align-items:center;gap:2px;background:var(--accent);color:#fff;border:3px solid var(--ink);font-family:Anton,sans-serif;font-weight:400;font-size:32px;letter-spacing:.04em;padding:18px 20px;box-shadow:6px 6px 0 var(--ink);}
 .fb-correct:hover:not(:disabled){box-shadow:7px 7px 0 var(--ink);}
 .fb-correct:active:not(:disabled){box-shadow:1px 1px 0 var(--ink);}
 .fb-correct span{font-family:'Space Mono',monospace;font-size:12px;opacity:.75;font-weight:700;line-height:1;}
