@@ -107,10 +107,19 @@ const MURRAY_PIX = [
   "....KBBBBBBK....",
 ];
 const MURRAY_COL = { K: "#14181D", H: "#6B4A2B", Y: "#F5C518", B: "var(--accent)" };
-function MurrayPix({ size = 60, className = "" }) {
+// Hair + shirt palettes; a player's stable id picks one of each so everyone
+// in the room gets a distinct-but-consistent minifigure.
+const MURRAY_HAIR = ["#6B4A2B", "#2C2A29", "#E6B84F", "#C2552E", "#8A8F98", "#3A2418"];
+const MURRAY_SHIRT = ["#3B6EA5", "#B15E86", "#3E8E72", "#6B5B9A", "#1F51FF", "#2E8B8B", "#E8920A", "#E0322B"];
+const hashSeed = (s) => { let h = 2166136261; const str = String(s); for (let i = 0; i < str.length; i++) { h ^= str.charCodeAt(i); h = Math.imul(h, 16777619); } return h >>> 0; };
+// With a `seed` the figure is randomised (hair + shirt) from that seed; with
+// no seed it's the canonical Murray (brown hair, accent torso).
+function MurrayPix({ size = 60, className = "", seed }) {
   const rows = MURRAY_PIX, w = rows[0].length, h = rows.length, px = [];
-  rows.forEach((row, y) => { for (let x = 0; x < row.length; x++) { const c = MURRAY_COL[row[x]]; if (c) px.push(<rect key={`${x},${y}`} x={x} y={y} width="1.02" height="1.02" style={{ fill: c }} />); } });
-  return <svg className={className} width={size} height={Math.round(size * h / w)} viewBox={`0 0 ${w} ${h}`} shapeRendering="crispEdges" role="img" aria-label="Murray">{px}</svg>;
+  let col = MURRAY_COL;
+  if (seed != null) { const x = hashSeed(seed); col = { ...MURRAY_COL, H: MURRAY_HAIR[x % MURRAY_HAIR.length], B: MURRAY_SHIRT[(x >> 5) % MURRAY_SHIRT.length] }; }
+  rows.forEach((row, y) => { for (let i = 0; i < row.length; i++) { const c = col[row[i]]; if (c) px.push(<rect key={`${i},${y}`} x={i} y={y} width="1.02" height="1.02" style={{ fill: c }} />); } });
+  return <svg className={className} width={size} height={Math.round(size * h / w)} viewBox={`0 0 ${w} ${h}`} shapeRendering="crispEdges" role="img" aria-label="Player">{px}</svg>;
 }
 
 /* ================================================================== *
@@ -1051,13 +1060,10 @@ function RoomShare({ code, status, connected }) {
   };
   const canShare = typeof navigator !== "undefined" && !!navigator.share;
   const dot = status === "online" ? "var(--green)" : status === "error" ? "var(--red)" : "var(--amber)";
-  const msg = status === "online" ? t("share.live")
-    : status === "error" ? t("share.taken")
-    : t("share.opening");
+  const title = status === "online" ? t("share.shareRoom") : status === "error" ? t("share.errorTitle") : t("share.connecting");
   return (
     <div className="fb-card fb-stack fb-center">
-      <h2 className="fb-h2">{t("share.shareRoom")}</h2>
-      <p className="fb-statusline"><span className="fb-statusdot" style={{ background: dot }} /> {msg}</p>
+      <h2 className="fb-h2 fb-sharetitle"><span className="fb-statusdot" style={{ background: dot }} /> {title}</h2>
       {qr && <img className="fb-qr" src={qr} alt={t("share.qrAlt")} width={200} height={200} />}
       <p className="fb-tiny">{t("share.scanSend")} <b className="fb-code">{code}</b></p>
       <input className="fb-input mono fb-linkfield" readOnly value={link} onFocus={(e) => e.target.select()} aria-label={t("share.roomLink")} />
@@ -1074,20 +1080,18 @@ function RoomShare({ code, status, connected }) {
 function Arrivals({ players, myId }) {
   const t = useT();
   const here = players.filter((p) => p.connected !== false);
-  const someoneJoined = here.some((p) => !p.isHost);
   return (
     <div className="fb-card fb-stack">
       <h2 className="fb-h2">{t("arrivals.title", { n: here.length })}</h2>
       <div className="fb-arrlist">
-        {here.map((p, i) => (
-          <span key={p.id} className="fb-arrchip" style={{ "--accent": PALETTE[i % PALETTE.length] }}>
-            <MurrayPix size={22} />
+        {here.map((p) => (
+          <span key={p.id} className="fb-arrchip">
+            <MurrayPix size={22} seed={p.id} />
             <b>{p.name}</b>
             {p.isHost && <span className="fb-arrtag">{t("host.host")}</span>}
             {p.id === myId && !p.isHost && <span className="fb-arrtag">you</span>}
           </span>
         ))}
-        {!someoneJoined && <span className="fb-arrwait">{t("arrivals.waiting")}</span>}
       </div>
     </div>
   );
@@ -1289,9 +1293,6 @@ const CSS = `
 .fb-arrtag{font-family:'Space Mono',monospace;font-size:9px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:#fff;
   background:var(--accent);border:1.5px solid var(--ink);border-radius:4px;padding:1px 5px;}
 @keyframes arrpop{0%{transform:translateY(-9px) scale(.55);opacity:0;}60%{transform:translateY(0) scale(1.1);}100%{transform:scale(1);opacity:1;}}
-.fb-arrwait{display:inline-flex;align-items:center;font-family:'Space Mono',monospace;font-size:12px;color:var(--muted);
-  border:2px dashed var(--line);border-radius:9px;padding:9px 13px;animation:arrpulse 1.7s ease-in-out infinite;}
-@keyframes arrpulse{50%{opacity:.45;}}
 .fb-teampick{display:flex;gap:8px;flex-wrap:wrap;}
 .fb-teambtn{flex:1 1 40%;background:#fff;border:2.5px solid var(--ink);border-radius:6px;padding:12px;color:var(--muted);font-weight:800;font-family:inherit;font-size:15px;cursor:pointer;}
 .fb-teambtn.on{border-color:var(--tc);color:var(--tc);box-shadow:3px 3px 0 var(--tc);}
@@ -1307,7 +1308,8 @@ const CSS = `
 
 .fb-qr{width:200px;height:200px;border-radius:6px;background:var(--slip);border:3px solid var(--ink);padding:8px;box-shadow:6px 6px 0 var(--ink);image-rendering:pixelated;}
 .fb-statusline{display:flex;align-items:center;gap:8px;margin:0;color:var(--muted);font-size:13px;font-family:'Space Mono',monospace;}
-.fb-statusdot{width:9px;height:9px;border-radius:50%;flex:none;}
+.fb-sharetitle{display:flex;align-items:center;justify-content:center;gap:8px;}
+.fb-statusdot{width:10px;height:10px;border-radius:50%;flex:none;border:1.5px solid var(--ink);}
 .fb-code{font-family:'Space Mono',monospace;letter-spacing:.12em;color:var(--accent);text-transform:uppercase;}
 .fb-linkfield{font-size:12px;text-align:center;}
 .fb-sharebtns{width:100%;}
@@ -1403,6 +1405,6 @@ const CSS = `
 
 @media (prefers-reduced-motion:reduce){
   .fb-vtimer.pulse{animation:none;}.fb-vt-disc{transition:none;}.fb-btn{transition:none;}.fb-slip{animation:none;}
-  .fb-arrchip{animation:none;}.fb-arrwait{animation:none;}
+  .fb-arrchip{animation:none;}
 }
 `;

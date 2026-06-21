@@ -74,7 +74,7 @@ const STRINGS = {
       addMore: ({ n }) => `Add ${n} more words`,
       needGroup: "Everyone needs a group", needTwo: "Need 2 groups with players",
     },
-    arrivals: { title: ({ n }) => `Who's here · ${n}`, waiting: "Waiting for players to pop in…" },
+    arrivals: { title: ({ n }) => `Who's here · ${n}` },
     client: {
       joinRoom: "Join a room",
       joiningRoom: ({ code }) => ["Joining room ", { b: code }, ". Just pop your name in."],
@@ -119,9 +119,8 @@ const STRINGS = {
       noGroup: " · no group yet", addGroup: "+ add a group", nameLabel: "Group name", remove: "Remove group",
     },
     share: {
-      shareRoom: "Share the room", live: "Room is live, share away",
-      taken: "That code is taken. Leave and re-open the room", opening: "Opening the room…",
-      scanSend: "Scan it, or send the link. Code:", copied: "Copied ✓", copyLink: "Copy link",
+      shareRoom: "Share the room", connecting: "Connecting…", errorTitle: "Code taken - re-open",
+      scanSend: "Code:", copied: "Copied ✓", copyLink: "Copy link",
       shareDots: "Share…",
       connectedCount: ({ n }) => `${n} ${n === 1 ? "phone" : "phones"} connected`,
       joinMyRoom: "Join my room", qrAlt: "QR code to join the room", roomLink: "Room link",
@@ -172,7 +171,7 @@ const STRINGS = {
       addMore: ({ n }) => `Legg til ${n} ord til`,
       needGroup: "Alle trenger en gruppe", needTwo: "Trenger 2 grupper med spillere",
     },
-    arrivals: { title: ({ n }) => `Hvem er her · ${n}`, waiting: "Venter på at spillere dukker opp…" },
+    arrivals: { title: ({ n }) => `Hvem er her · ${n}` },
     client: {
       joinRoom: "Bli med i et rom",
       joiningRoom: ({ code }) => ["Blir med i rom ", { b: code }, ". Bare skriv inn navnet ditt."],
@@ -217,9 +216,8 @@ const STRINGS = {
       noGroup: " · ingen gruppe ennå", addGroup: "+ legg til en gruppe", nameLabel: "Gruppenavn", remove: "Fjern gruppe",
     },
     share: {
-      shareRoom: "Del rommet", live: "Rommet er live, del i vei",
-      taken: "Den koden er opptatt. Forlat og åpne rommet på nytt", opening: "Åpner rommet…",
-      scanSend: "Skann den, eller send lenken. Kode:", copied: "Kopiert ✓", copyLink: "Kopier lenke",
+      shareRoom: "Del rommet", connecting: "Kobler til…", errorTitle: "Koden er opptatt - åpne på nytt",
+      scanSend: "Kode:", copied: "Kopiert ✓", copyLink: "Kopier lenke",
       shareDots: "Del…",
       connectedCount: ({ n }) => `${n} ${n === 1 ? "telefon" : "telefoner"} tilkoblet`,
       joinMyRoom: "Bli med i rommet mitt", qrAlt: "QR-kode for å bli med i rommet", roomLink: "Romlenke",
