@@ -87,8 +87,8 @@ const STRINGS = {
     ready: {
       timesUp: "⏰ Time's up!", yourTurn: "Your team's turn", nowUp: "Now up to give clues",
       inherit: "You'll start with last turn's leftover card.",
-      illGive: ({ n }) => `I'll give clues · ${n}s`,
-      someone: 'Someone tap "I\'ll give clues" on their phone.',
+      illGive: ({ n }) => `Start · ${n}s`,
+      someone: 'Someone tap "Start" on their phone.',
       watch: "Watch the room.",
     },
     timer: { sec: "sec", secsLeft: ({ n }) => `${n} seconds left` },
@@ -176,8 +176,8 @@ const STRINGS = {
     ready: {
       timesUp: "⏰ Tiden er ute!", yourTurn: "Lagets tur", nowUp: "Nå er det tur til å gi hint",
       inherit: "Du starter med kortet som ble til overs forrige tur.",
-      illGive: ({ n }) => `Jeg gir hint · ${n}s`,
-      someone: 'Noen må trykke "Jeg gir hint" på telefonen sin.',
+      illGive: ({ n }) => `Start · ${n}s`,
+      someone: 'Noen må trykke "Start" på telefonen sin.',
       watch: "Følg med i rommet.",
     },
     timer: { sec: "sek", secsLeft: ({ n }) => `${n} sekunder igjen` },
