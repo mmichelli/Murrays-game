@@ -57,7 +57,7 @@ const STRINGS = {
       openRoom: "Create a game", joinRoom: "Join a game",
       slips: ["talk", "mime", "peek"],
       heroTag: "The party word game", heroSub: "One wordlist · five rounds · pure chaos",
-      named: "Named after Murray, the varsity mate who first taught us to play.",
+      named: "Named after Murray, one of the guys at Durban university who taught our group the game.",
     },
     host: {
       hosting: "You're hosting", createRoom: "Create the game", host: "Host",
@@ -155,7 +155,7 @@ const STRINGS = {
       openRoom: "Lag et spill", joinRoom: "Bli med i et spill",
       slips: ["snakk", "mim", "kikk"],
       heroTag: "Festens ordspill", heroSub: "Én ordliste · fem runder · rent kaos",
-      named: "Oppkalt etter Murray, studiekompisen som først lærte oss å spille.",
+      named: "Oppkalt etter Murray, en av gutta på Durban-universitetet som lærte gjengen vår spillet.",
     },
     host: {
       hosting: "Du er vert", createRoom: "Lag spillet", host: "Vert",
