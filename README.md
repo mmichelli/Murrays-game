@@ -92,7 +92,7 @@ Both run automatically in GitHub Actions on every push and pull request ([`.gith
 
 ```bash
 npm test
-# ✓ test/i18n.test.js   (19 tests)
+# ✓ test/i18n.test.js   (18 tests)
 # ✓ test/engine.test.js (33 tests)
 # ✓ test/p2p.test.js    (12 tests)
 ```

@@ -8,17 +8,15 @@
  * processes the messages players send over their WebRTC data channel.
  * ================================================================== */
 
+// Each round's number, a short developer-facing label, and its ink accent
+// colour. All player-facing copy (name, setup, allowed/never) lives in the
+// i18n tables, and the clue-style icons are pixel art keyed by round number.
 export const ROUNDS = [
-  { n: 1, name: "Describe",   icon: "🎭", setup: "Stand in front of your team.",
-    allowed: "Sentences, descriptions, sounds, gestures.", restrict: "Don't say the word, parts of it, or rhymes.", accent: "#1F51FF" },
-  { n: 2, name: "Charades",   icon: "🏃", setup: "Stand in front of your team.",
-    allowed: "Full-body acting and miming.", restrict: "Silence. No speaking, whispering or mouthing.", accent: "#3B6EA5" },
-  { n: 3, name: "One Word",   icon: "💬", setup: "Stand in front of your team.",
-    allowed: "Exactly one word, total, per card.", restrict: "Repeat it, but never change it or gesture.", accent: "#B15E86" },
-  { n: 4, name: "Hands Only", icon: "✋", setup: "Behind the couch - only hands show.",
-    allowed: "Fingers, hands and forearms.", restrict: "Silence. Head, face, torso, legs hidden.", accent: "#3E8E72" },
-  { n: 5, name: "Face Only",  icon: "🤨", setup: "Peek over the couch - only your face.",
-    allowed: "Eyes, brows, nose, mouth, head tilts.", restrict: "Silence. Neck down stays hidden.", accent: "#6B5B9A" },
+  { n: 1, name: "Describe",   accent: "#1F51FF" },
+  { n: 2, name: "Charades",   accent: "#3B6EA5" },
+  { n: 3, name: "One Word",   accent: "#B15E86" },
+  { n: 4, name: "Hands Only", accent: "#3E8E72" },
+  { n: 5, name: "Face Only",  accent: "#6B5B9A" },
 ];
 export const PALETTE = ["#3B6EA5", "#B15E86", "#3E8E72", "#6B5B9A", "#1F51FF", "#2E8B8B"];
 export const MIN_WORDS = 4, MAX_TEAMS = 6, TURN_SECONDS = 60;
@@ -142,14 +140,14 @@ function advanceTurn(s, keepCard) {
 function resolveDeckEmpty(s) {
   if (s.currentRound >= 5) return { ...s, phase: "endgame", running: false, activeCard: null };
   return { ...s, deck: shuffle(s.discard), discard: [], activeCard: null, currentRound: s.currentRound + 1,
-    lastCompleted: s.currentRound, phase: "transition", running: false };
+    phase: "transition", running: false };
 }
 
 export const initial = {
   phase: "lobby", teams: [], players: [], bowl: [], wordCounts: {}, wordBy: {},
   deck: [], discard: [], activeCard: null,
   currentRound: 1, activeTeamIdx: 0, activePlayerId: null,
-  timeLeft: TURN_SECONDS, running: false, scores: {}, turnNumber: 1, lastCompleted: 0,
+  timeLeft: TURN_SECONDS, running: false, scores: {}, turnNumber: 1,
 };
 
 export function reducer(state, a) {
@@ -201,7 +199,7 @@ export function reducer(state, a) {
       const first = teams.findIndex((t) => state.players.some((p) => p.teamId === t.id));
       return { ...state, teams, phase: "ready", deck: shuffle(state.bowl), discard: [], activeCard: null,
         currentRound: 1, activeTeamIdx: first < 0 ? 0 : first, activePlayerId: null,
-        scores: zeros(teams), timeLeft: TURN_SECONDS, running: false, turnNumber: 1, lastCompleted: 0 };
+        scores: zeros(teams), timeLeft: TURN_SECONDS, running: false, turnNumber: 1 };
     }
 
     case "CLAIM_AND_BEGIN": {
@@ -243,7 +241,7 @@ export function reducer(state, a) {
       const first = state.teams.findIndex((t) => state.players.some((p) => p.teamId === t.id));
       return { ...state, phase: "ready", deck: shuffle(state.bowl), discard: [], activeCard: null, currentRound: 1,
         activeTeamIdx: first < 0 ? 0 : first, activePlayerId: null, scores: zeros(state.teams),
-        timeLeft: TURN_SECONDS, running: false, turnNumber: 1, lastCompleted: 0 };
+        timeLeft: TURN_SECONDS, running: false, turnNumber: 1 };
     }
     default: return state;
   }

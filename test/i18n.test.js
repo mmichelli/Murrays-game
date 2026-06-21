@@ -100,11 +100,7 @@ describe("makeT", () => {
   it("interpolates parameters", () => {
     expect(makeT("en")("end.wins", { team: "Bokke" })).toBe("Bokke wins!");
     expect(makeT("no")("end.wins", { team: "Bokke" })).toBe("Bokke vinner!");
-  });
-  it("pluralises the phone count", () => {
-    expect(makeT("en")("share.connectedCount", { n: 1 })).toBe("1 phone connected");
-    expect(makeT("en")("share.connectedCount", { n: 2 })).toBe("2 phones connected");
-    expect(makeT("no")("share.connectedCount", { n: 1 })).toBe("1 telefon tilkoblet");
+    expect(makeT("en")("arrivals.title", { n: 3 })).toBe("Who's here · 3");
   });
   it("returns rich strings as segment arrays for inline bold", () => {
     const segs = makeT("en")("client.joiningRoom", { code: "kx7m2p" });

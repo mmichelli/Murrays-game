@@ -3,7 +3,7 @@ import {
   ROUNDS, PALETTE, MIN_WORDS, MAX_TEAMS, TURN_SECONDS, WORDS_PER_PLAYER, sampleDeck, deckTopUp,
   uid, initial, viewFor, createHostHub, peerOptions,
 } from "./engine.js";
-import { LANGS, detectLang, saveLang, makeT, roundText } from "./i18n.js";
+import { LANGS, detectLang, saveLang, makeT } from "./i18n.js";
 // Round glyphs from Pixelarticons (MIT) - https://pixelarticons.com - imported
 // as raw SVG so each round wears a crisp pixel-art icon that inherits the
 // surrounding text colour. Describe=speak, Charades=act, One Word=bubble,
@@ -123,21 +123,22 @@ function MurrayPix({ size = 60, className = "", seed }) {
 }
 
 /* ================================================================== *
- * MURRAY'S GAME - a 5-round Fishbowl for South African students.
+ * MURRAY'S GAME - a 5-round Fishbowl party game (English / Norwegian).
  * P2P rooms, no backend.
  *
  * One HOST phone is the room (authoritative engine + timer + hub).
- * Every other phone connects once (copy-paste signaling), then:
- *   - all phones add words to the shared bowl in PARALLEL
+ * Every other phone joins via a shareable link (PeerJS handshake), then:
+ *   - all phones add words to the shared wordlist in PARALLEL
  *   - N teams
  *   - on each turn, ONE phone per team claims the word + CORRECT button
  * The word is only ever sent to the active clue-giver's device.
  *
- * Visual identity: risograph party-flyer on paper stock. The secret
+ * Visual identity: chunky neo-brutalism with pixel-art icons. The secret
  * word arrives as a torn paper slip with a colored misregistration
  * ghost in the round's ink.
  *
- * Pure game logic + the P2P host hub live in ./engine.js (unit-tested).
+ * Pure game logic + the P2P host hub live in ./engine.js (unit-tested);
+ * the language layer is ./i18n.js.
  *
  * Test P2P with two browser tabs, or phones on one WiFi served over
  * https / localhost (WebRTC needs a secure context).
@@ -479,7 +480,7 @@ function HostLobby({ state, dispatch, hostId, roomCode, peerStatus, onExit }) {
       </div>
 
       {tab === 0 && (<>
-        <RoomShare code={roomCode} status={peerStatus} connected={clients} />
+        <RoomShare code={roomCode} status={peerStatus} />
         <Arrivals players={state.players} myId={hostId} />
         <button className="fb-btn fb-ghost" onClick={() => setTab(1)}>{t("lobby.nextGroups")}</button>
       </>)}
@@ -1044,7 +1045,7 @@ function GroupBoard({ teams, roster, myId, myTeamId, onPick, onRename, onAddTeam
 }
 // Host's share panel: a QR to scan and a link to send. The PeerJS broker
 // handles only the handshake; game data stays peer-to-peer.
-function RoomShare({ code, status, connected }) {
+function RoomShare({ code, status }) {
   const t = useT();
   const link = useMemo(() => roomLinkFor(code), [code]);
   const [qr, setQr] = useState("");
@@ -1229,23 +1230,15 @@ const CSS = `
 .fb-tiny{color:var(--muted);font-size:12px;margin:0;font-family:'Space Mono',monospace;}
 .fb-hostnote{margin:2px 0 0;font-family:'Space Mono',monospace;font-size:11.5px;line-height:1.55;color:var(--ink);
   background:var(--panel);border:2.5px solid var(--ink);border-radius:6px;box-shadow:3px 3px 0 var(--accent);padding:11px 13px;text-align:left;}
-.fb-num{font-family:Anton,sans-serif;font-weight:400;font-size:20px;color:var(--accent);vertical-align:-1px;margin-right:4px;}
-.fb-link{background:none;border:none;color:var(--muted);font-size:13px;cursor:pointer;font-family:inherit;text-decoration:underline;padding:4px;}
 
 .fb-label{display:flex;flex-direction:column;gap:6px;font-family:'Space Mono',monospace;font-size:12px;color:var(--muted);text-transform:uppercase;letter-spacing:.12em;}
 .fb-input{background:#fff;border:2.5px solid var(--ink);border-radius:6px;color:var(--ink);padding:12px 13px;font-size:16px;font-family:inherit;width:100%;box-sizing:border-box;}
 .fb-input:focus{outline:none;border-color:var(--ink);box-shadow:3px 3px 0 var(--accent);}
 .fb-input.bare{background:transparent;border:none;padding:6px 0;font-weight:800;font-size:17px;box-shadow:none;}
 .fb-input.bare:focus{outline:none;box-shadow:none;border-bottom:2px solid var(--tc);}
-.fb-area{background:#fff;border:2.5px solid var(--ink);border-radius:6px;color:var(--ink);padding:11px;font-size:13px;width:100%;box-sizing:border-box;min-height:60px;resize:vertical;font-family:inherit;}
-.fb-area:focus{outline:none;border-color:var(--ink);box-shadow:2px 2px 0 var(--accent);}
-.fb-area.mono{font-family:'Space Mono',monospace;font-size:11px;color:var(--muted);}
 .fb-row{display:flex;gap:8px;}
 .fb-add{width:auto;padding-left:18px;padding-right:18px;}
-.fb-wordprog{display:flex;justify-content:space-between;align-items:center;gap:8px;font-family:'Space Mono',monospace;font-size:11px;letter-spacing:.04em;color:var(--muted);text-transform:uppercase;}
-.fb-wordprog b{font-family:Anton,sans-serif;font-weight:400;font-size:16px;color:var(--accent);vertical-align:-2px;margin:0 2px;}
-.fb-wordprog.done{color:var(--green);}.fb-wordprog.done b{color:var(--green);}
-/* "Wordlist"/"Your words" headings + inline tally */
+/* "Your words" heading + inline tally */
 .fb-yourwords{display:flex;align-items:baseline;gap:9px;flex-wrap:wrap;margin-top:8px;}
 .fb-yourwordsnum{font-family:Anton,sans-serif;font-weight:400;font-size:19px;color:var(--accent);}
 .fb-wordhint{margin:-6px 0 0;font-family:'Space Mono',monospace;font-size:11px;letter-spacing:.04em;text-transform:uppercase;color:var(--muted);}
@@ -1323,9 +1316,6 @@ const CSS = `
 .fb-arrtag{font-family:'Space Mono',monospace;font-size:9px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:#fff;
   background:var(--accent);border:1.5px solid var(--ink);border-radius:4px;padding:1px 5px;}
 @keyframes arrpop{0%{transform:translateY(-9px) scale(.55);opacity:0;}60%{transform:translateY(0) scale(1.1);}100%{transform:scale(1);opacity:1;}}
-.fb-teampick{display:flex;gap:8px;flex-wrap:wrap;}
-.fb-teambtn{flex:1 1 40%;background:#fff;border:2.5px solid var(--ink);border-radius:6px;padding:12px;color:var(--muted);font-weight:800;font-family:inherit;font-size:15px;cursor:pointer;}
-.fb-teambtn.on{border-color:var(--tc);color:var(--tc);box-shadow:3px 3px 0 var(--tc);}
 
 .fb-group{background:#fff;border:2.5px solid var(--ink);border-radius:6px;padding:11px 13px;display:flex;flex-direction:column;gap:9px;box-shadow:3px 3px 0 var(--ink);}
 .fb-group.mine{box-shadow:4px 4px 0 var(--tc);}
@@ -1337,7 +1327,6 @@ const CSS = `
 .fb-joinbtn.on{background:var(--tc);border-color:var(--ink);color:#fff;box-shadow:3px 3px 0 var(--ink);}
 
 .fb-qr{width:200px;height:200px;border-radius:6px;background:var(--slip);border:3px solid var(--ink);padding:8px;box-shadow:6px 6px 0 var(--ink);image-rendering:pixelated;}
-.fb-statusline{display:flex;align-items:center;gap:8px;margin:0;color:var(--muted);font-size:13px;font-family:'Space Mono',monospace;}
 .fb-sharetitle{display:flex;align-items:center;justify-content:center;gap:8px;}
 .fb-sharetitle .fb-code{font-size:16px;}
 .fb-statusdot{width:10px;height:10px;border-radius:50%;flex:none;border:1.5px solid var(--ink);}
@@ -1428,7 +1417,6 @@ const CSS = `
 .fb-th2{display:flex;flex-direction:column;align-items:center;gap:1px;}
 .fb-th2 span{font-size:9px;letter-spacing:.06em;color:var(--muted);}
 .fb-table th:first-child,.fb-table td:first-child{text-align:left;font-family:Archivo;font-weight:800;}
-.fb-copy{display:flex;flex-direction:column;gap:8px;}
 
 .fb-hostbar{display:flex;gap:8px;align-items:center;justify-content:center;flex-wrap:wrap;margin-top:14px;color:var(--muted);font-size:11px;font-family:'Space Mono',monospace;text-transform:uppercase;letter-spacing:.1em;}
 .fb-hostbar button{background:var(--panel);border:2px solid var(--ink);color:var(--ink);border-radius:6px;padding:7px 11px;font-size:11px;cursor:pointer;font-family:inherit;text-transform:uppercase;letter-spacing:.08em;}

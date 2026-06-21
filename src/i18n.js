@@ -67,9 +67,6 @@ const STRINGS = {
     steps: { invite: "Invite", groups: "Groups", bowl: "Wordlist" },
     lobby: {
       nextGroups: "Next · groups →", nextBowl: "Next · the wordlist →",
-      groupsTap: ({ n }) => `Groups · ${n} · tap to join`,
-      theBowl: "Wordlist", wordsLabel: "words",
-      bowlInfo: "in the wordlist",
       start: "Start game", waitPlayers: "Waiting for players to join",
       addMore: ({ n }) => `Add ${n} more words`,
       needGroup: "Everyone needs a group", needTwo: "Need 2 groups with players",
@@ -80,8 +77,6 @@ const STRINGS = {
       joiningRoom: ({ code }) => ["Joining room ", { b: code }, ". Just pop your name in."],
       roomCode: "Room code", join: "Join room", connecting: "Connecting…",
       reaching: "Reaching the room…", roomNotAnswering: "Room not answering yet, retrying…",
-      inRoom: "In the room",
-      bowlInfo: "in the wordlist",
       waitHost: "Waiting for the host to start…", joinGroupReady: "Join a group to be ready.",
     },
     reconnect: {
@@ -111,7 +106,7 @@ const STRINGS = {
     },
     end: {
       tie: "It's a tie!", wins: ({ team }) => `${team} wins!`,
-      roundByRound: "Round-by-round", team: "Team", r: ({ n }) => `R${n}`,
+      roundByRound: "Round-by-round", team: "Team",
     },
     group: {
       empty: "empty", you: " (you)", host: " · host", offline: " · offline",
@@ -119,18 +114,14 @@ const STRINGS = {
       noGroup: " · no group yet", addGroup: "+ add a group", nameLabel: "Group name", remove: "Remove group",
     },
     share: {
-      shareRoom: "Share the room", connecting: "Connecting…", errorTitle: "Code taken - re-open", roomLabel: "Room",
-      copied: "Copied ✓", copyLink: "Copy link",
-      shareDots: "Share…",
-      connectedCount: ({ n }) => `${n} ${n === 1 ? "phone" : "phones"} connected`,
+      connecting: "Connecting…", errorTitle: "Code taken - re-open", roomLabel: "Room",
+      copied: "Copied ✓", copyLink: "Copy link", shareDots: "Share…",
       joinMyRoom: "Join my room", qrAlt: "QR code to join the room", roomLink: "Room link",
     },
     words: {
-      progressLead: "Your words", plenty: "✓ that's plenty",
-      toGo: ({ n }) => `${n} to go`, typeWord: "Type a word…",
+      progressLead: "Your words", plenty: "✓ that's plenty", typeWord: "Type a word…",
       deleteAria: ({ w }) => `Delete "${w}"`,
       fillMine: ({ n }) => `Fill my ${n} from Murray's deck`,
-      hidden: "Your words stay hidden from everyone until they're in play.",
     },
     deck: {
       allIn: "The whole deck is already in the wordlist.",
@@ -165,9 +156,6 @@ const STRINGS = {
     steps: { invite: "Inviter", groups: "Grupper", bowl: "Ordliste" },
     lobby: {
       nextGroups: "Neste · grupper →", nextBowl: "Neste · ordlisten →",
-      groupsTap: ({ n }) => `Grupper · ${n} · trykk for å bli med`,
-      theBowl: "Ordliste", wordsLabel: "ord",
-      bowlInfo: "i ordlisten",
       start: "Start spillet", waitPlayers: "Venter på at spillere blir med",
       addMore: ({ n }) => `Legg til ${n} ord til`,
       needGroup: "Alle trenger en gruppe", needTwo: "Trenger 2 grupper med spillere",
@@ -178,8 +166,6 @@ const STRINGS = {
       joiningRoom: ({ code }) => ["Blir med i rom ", { b: code }, ". Bare skriv inn navnet ditt."],
       roomCode: "Romkode", join: "Bli med", connecting: "Kobler til…",
       reaching: "Når rommet…", roomNotAnswering: "Rommet svarer ikke ennå, prøver igjen…",
-      inRoom: "I rommet",
-      bowlInfo: "i ordlisten",
       waitHost: "Venter på at verten starter…", joinGroupReady: "Bli med i en gruppe for å være klar.",
     },
     reconnect: {
@@ -209,7 +195,7 @@ const STRINGS = {
     },
     end: {
       tie: "Uavgjort!", wins: ({ team }) => `${team} vinner!`,
-      roundByRound: "Runde for runde", team: "Lag", r: ({ n }) => `R${n}`,
+      roundByRound: "Runde for runde", team: "Lag",
     },
     group: {
       empty: "tom", you: " (deg)", host: " · vert", offline: " · frakoblet",
@@ -217,18 +203,14 @@ const STRINGS = {
       noGroup: " · ingen gruppe ennå", addGroup: "+ legg til en gruppe", nameLabel: "Gruppenavn", remove: "Fjern gruppe",
     },
     share: {
-      shareRoom: "Del rommet", connecting: "Kobler til…", errorTitle: "Koden er opptatt - åpne på nytt", roomLabel: "Rom",
-      copied: "Kopiert ✓", copyLink: "Kopier lenke",
-      shareDots: "Del…",
-      connectedCount: ({ n }) => `${n} ${n === 1 ? "telefon" : "telefoner"} tilkoblet`,
+      connecting: "Kobler til…", errorTitle: "Koden er opptatt - åpne på nytt", roomLabel: "Rom",
+      copied: "Kopiert ✓", copyLink: "Kopier lenke", shareDots: "Del…",
       joinMyRoom: "Bli med i rommet mitt", qrAlt: "QR-kode for å bli med i rommet", roomLink: "Romlenke",
     },
     words: {
-      progressLead: "Dine ord", plenty: "✓ det holder",
-      toGo: ({ n }) => `${n} igjen`, typeWord: "Skriv et ord…",
+      progressLead: "Dine ord", plenty: "✓ det holder", typeWord: "Skriv et ord…",
       deleteAria: ({ w }) => `Slett "${w}"`,
       fillMine: ({ n }) => `Fyll mine ${n} fra Murrays kortstokk`,
-      hidden: "Ordene dine er skjult for alle til de er i spill.",
     },
     deck: {
       allIn: "Hele kortstokken er allerede i ordlisten.",
