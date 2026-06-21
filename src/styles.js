@@ -233,7 +233,7 @@ export const CSS = `
 .fb-correct span{font-family:'Space Mono',monospace;font-size:12px;opacity:.75;font-weight:700;line-height:1;}
 .fb-noskip{text-align:center;color:var(--muted);font-size:12px;margin:0;font-family:'Space Mono',monospace;}
 
-.fb-flash{font-family:'Space Mono',monospace;font-weight:700;font-size:13px;letter-spacing:.04em;color:var(--ink);
+.fb-flash{font-family:'Space Mono',monospace;font-weight:700;font-size:13px;letter-spacing:.04em;color:#fff;
   background:var(--accent);border:2.5px solid var(--ink);padding:9px 13px;border-radius:6px;box-shadow:3px 3px 0 var(--ink);}
 .fb-flash.big{font-family:Anton,sans-serif;font-weight:400;font-size:20px;letter-spacing:.03em;}
 .fb-inherit{color:var(--muted);font-weight:400;margin:0;font-size:13px;font-family:'Space Mono',monospace;}

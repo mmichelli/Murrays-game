@@ -130,11 +130,11 @@ const STRINGS = {
     },
     lang: { label: "Language" },
     round: {
-      1: { name: "Describe", setup: "", allowed: "Sentences, descriptions, sounds, gestures.", restrict: "Don't say the word, parts of it, or rhymes.", gloss: "say anything but the word" },
-      2: { name: "Charades", setup: "", allowed: "Full-body acting and miming.", restrict: "Silence. No speaking, whispering or mouthing.", gloss: "act it out, no talking" },
-      3: { name: "One Word", setup: "", allowed: "Exactly one word, total, per card.", restrict: "Repeat it, but never change it or gesture.", gloss: "just one word, out loud" },
-      4: { name: "Hands Only", setup: "Behind the couch - only hands show.", allowed: "Fingers, hands and forearms.", restrict: "Silence. Head, face, torso, legs hidden.", gloss: "clues with your hands only" },
-      5: { name: "Face Only", setup: "Peek over the couch - only your face.", allowed: "Eyes, brows, nose, mouth, head tilts.", restrict: "Silence. Neck down stays hidden.", gloss: "clues with your face only" },
+      1: { name: "Describe", setup: "", allowed: "Sentences, descriptions, sounds, gestures.", restrict: "Saying the word, part of it, or a rhyme.", gloss: "say anything but the word" },
+      2: { name: "Charades", setup: "", allowed: "Full-body acting and miming.", restrict: "Talking, whispering or mouthing.", gloss: "act it out, no talking" },
+      3: { name: "One Word", setup: "", allowed: "One word, total - repeat it freely.", restrict: "Changing the word, or any gesture.", gloss: "just one word, out loud" },
+      4: { name: "Hands Only", setup: "Behind the couch - only hands show.", allowed: "Fingers, hands and forearms.", restrict: "Talking, or showing anything but your hands.", gloss: "clues with your hands only" },
+      5: { name: "Face Only", setup: "Peek over the couch - only your face.", allowed: "Eyes, brows, nose, mouth, head tilts.", restrict: "Talking, or showing below the neck.", gloss: "clues with your face only" },
     },
   },
   no: {
@@ -219,11 +219,11 @@ const STRINGS = {
     },
     lang: { label: "Språk" },
     round: {
-      1: { name: "Forklar", setup: "", allowed: "Setninger, beskrivelser, lyder, fakter.", restrict: "Ikke si ordet, deler av det, eller rim.", gloss: "si hva som helst utenom ordet" },
-      2: { name: "Charade", setup: "", allowed: "Helkroppsspill og miming.", restrict: "Stillhet. Ingen tale, hvisking eller munnbevegelser.", gloss: "spill det ut, ingen prat" },
-      3: { name: "Ett ord", setup: "", allowed: "Nøyaktig ett ord, totalt, per kort.", restrict: "Gjenta det, men aldri endre det eller bruk fakter.", gloss: "bare ett ord, høyt" },
-      4: { name: "Kun hender", setup: "Bak sofaen - bare hendene vises.", allowed: "Fingre, hender og underarmer.", restrict: "Stillhet. Hode, ansikt, overkropp og ben skjult.", gloss: "hint kun med hendene" },
-      5: { name: "Kun ansikt", setup: "Kikk over sofaen - bare ansiktet.", allowed: "Øyne, bryn, nese, munn, hodebevegelser.", restrict: "Stillhet. Fra halsen og ned er skjult.", gloss: "hint kun med ansiktet" },
+      1: { name: "Forklar", setup: "", allowed: "Setninger, beskrivelser, lyder, fakter.", restrict: "Å si ordet, deler av det, eller rim.", gloss: "si hva som helst utenom ordet" },
+      2: { name: "Charade", setup: "", allowed: "Helkroppsspill og miming.", restrict: "Å snakke, hviske eller forme ord med munnen.", gloss: "spill det ut, ingen prat" },
+      3: { name: "Ett ord", setup: "", allowed: "Ett ord, totalt - gjenta det fritt.", restrict: "Å bytte ord, eller bruke fakter.", gloss: "bare ett ord, høyt" },
+      4: { name: "Kun hender", setup: "Bak sofaen - bare hendene vises.", allowed: "Fingre, hender og underarmer.", restrict: "Å snakke, eller vise annet enn hendene.", gloss: "hint kun med hendene" },
+      5: { name: "Kun ansikt", setup: "Kikk over sofaen - bare ansiktet.", allowed: "Øyne, bryn, nese, munn, hodebevegelser.", restrict: "Å snakke, eller vise noe under halsen.", gloss: "hint kun med ansiktet" },
     },
   },
 };
