@@ -501,7 +501,6 @@ function HostLobby({ state, dispatch, hostId, roomCode, peerStatus, onExit }) {
 
       {tab === 2 && (
         <div className="fb-card fb-stack">
-          <WordlistTitle n={state.bowl.length} />
           <WordAdder onAdd={(ws) => dispatch({ type: "ADD_WORDS", words: ws, by: hostId })}
             onRemove={(w) => dispatch({ type: "REMOVE_WORD", word: w, by: hostId })}
             words={state.bowl.filter((w) => (state.wordBy || {})[w.toLowerCase()] === hostId)}
@@ -704,7 +703,6 @@ function ClientApp({ onExit, initialRoom }) {
           onAddTeam={() => send({ t: "addTeam" })}
           canAddTeam={lobby.teams.length < lobby.maxTeams}
         />
-        <WordlistTitle n={lobby.bowlCount} />
         <WordAdder onAdd={(ws) => send({ t: "words", words: ws })}
           onRemove={(w) => send({ t: "removeWord", word: w })}
           words={lobby.yourWords || []} count={myWords} target={target} />
@@ -1096,11 +1094,6 @@ function Arrivals({ players, myId }) {
       </div>
     </div>
   );
-}
-// The wordlist heading with the running count inline: "Wordlist 8".
-function WordlistTitle({ n }) {
-  const t = useT();
-  return <h1 className="fb-h1 fb-yourwords">{t("lobby.theBowl")}<span className="fb-yourwordsnum">{n}</span></h1>;
 }
 // `count` is how many words this person has already dropped in; `target` is
 // the soft per-player goal. `words` are this person's own entries, each
