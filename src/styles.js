@@ -112,9 +112,12 @@ export const CSS = `
 .fb-connmark{display:inline-flex;align-items:center;justify-content:center;width:24px;height:24px;font-size:15px;line-height:1;flex:none;border-radius:50%;}
 .fb-connstep:not(.now):not(.done) .fb-connmark{border:2px solid var(--line);}
 .fb-connstep.done .fb-connmark{background:var(--green);color:#fff;font-size:13px;}
-.fb-connstep.now .fb-connmark{color:var(--accent);animation:fbspin 1s linear infinite;}
+.fb-connstep.now .fb-connmark{color:var(--accent);}
+/* Spin the icon itself, pinned to its own centre - rotating the wrapper box
+   let the icon's baseline offset throw the pivot off and made it wobble. */
+.fb-connstep.now .fb-connmark .fb-pixicon{width:17px;height:17px;vertical-align:0;transform-origin:50% 50%;animation:fbspin 1s linear infinite;}
 .fb-connhint{margin:2px 0 0;text-align:center;font-family:'Space Mono',monospace;font-size:12px;line-height:1.5;color:var(--muted);}
-@media (prefers-reduced-motion:reduce){.fb-connstep.now .fb-connmark{animation:none;}}
+@media (prefers-reduced-motion:reduce){.fb-connstep.now .fb-connmark .fb-pixicon{animation:none;}}
 
 .fb-btn{background:var(--ink);color:var(--paper);border:3px solid var(--ink);border-radius:6px;padding:13px 16px;font-size:16px;font-weight:800;
   font-family:Archivo,sans-serif;cursor:pointer;width:100%;box-shadow:5px 5px 0 var(--accent);transition:transform .07s,box-shadow .07s;}
