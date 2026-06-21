@@ -697,8 +697,6 @@ function ClientApp({ onExit, initialRoom }) {
       </>)}
       {step === "connecting" && <p className="fb-muted">{status || t("client.connecting")}</p>}
       {step === "lobby" && lobby && (<>
-        <div className="fb-roundtag">{t("client.inRoom")}</div>
-        <h2 className="fb-h2">{t("lobby.groupsTap", { n: lobby.teams.length })}</h2>
         <GroupBoard
           teams={lobby.teams} roster={lobby.roster} myId={myId} myTeamId={myTeam}
           onPick={(teamId) => send({ t: "setTeam", teamId })}
