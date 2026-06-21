@@ -85,7 +85,7 @@ const STRINGS = {
       offline: "📡 You're offline. You'll rejoin automatically the moment you're back.",
     },
     ready: {
-      timesUp: "⏰ Time's up!", yourTurn: "Your team's turn", nowUp: "Now up to give clues",
+      timesUp: "Time's up!", yourTurn: "Your team's turn", nowUp: "Now up to give clues",
       inherit: "You'll start with last turn's leftover card.",
       illGive: ({ n }) => `Start · ${n}s`,
       someone: 'Someone tap "Start" on their phone.',
@@ -174,7 +174,7 @@ const STRINGS = {
       offline: "📡 Du er frakoblet. Du kobles til igjen automatisk så snart du er tilbake.",
     },
     ready: {
-      timesUp: "⏰ Tiden er ute!", yourTurn: "Lagets tur", nowUp: "Nå er det tur til å gi hint",
+      timesUp: "Tiden er ute!", yourTurn: "Lagets tur", nowUp: "Nå er det tur til å gi hint",
       inherit: "Du starter med kortet som ble til overs forrige tur.",
       illGive: ({ n }) => `Start · ${n}s`,
       someone: 'Noen må trykke "Start" på telefonen sin.',

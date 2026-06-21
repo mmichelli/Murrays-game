@@ -8,6 +8,13 @@ import charadesSvg from "pixelarticons/svg/human-arms-up.svg?raw";
 import oneWordSvg from "pixelarticons/svg/comment.svg?raw";
 import handsSvg from "pixelarticons/svg/hand.svg?raw";
 import faceSvg from "pixelarticons/svg/smile.svg?raw";
+import alarmSvg from "pixelarticons/svg/alarm-clock.svg?raw";
+
+// Render a raw Pixelarticons SVG inline so it inherits the surrounding text
+// colour and scales with the font size via CSS.
+const RawIcon = ({ svg, className = "" }) => svg
+  ? <span className={`fb-pixicon ${className}`} role="img" aria-hidden="true" dangerouslySetInnerHTML={{ __html: svg }} />
+  : null;
 
 /* ---------------------- pixel-art round icons --------------------- *
  * Each round wears a Pixelarticons glyph. The raw SVG uses
@@ -16,11 +23,8 @@ import faceSvg from "pixelarticons/svg/smile.svg?raw";
  * font size via CSS.
  * ------------------------------------------------------------------ */
 const ROUND_SVG = { 1: describeSvg, 2: charadesSvg, 3: oneWordSvg, 4: handsSvg, 5: faceSvg };
-export function RoundIcon({ n, className = "" }) {
-  const svg = ROUND_SVG[n];
-  if (!svg) return null;
-  return <span className={`fb-pixicon ${className}`} role="img" aria-hidden="true" dangerouslySetInnerHTML={{ __html: svg }} />;
-}
+export const RoundIcon = ({ n, className = "" }) => <RawIcon svg={ROUND_SVG[n]} className={className} />;
+export const AlarmIcon = ({ className = "" }) => <RawIcon svg={alarmSvg} className={className} />;
 
 /* ------------------------- Murray, the mate ----------------------- *
  * The namesake, as a pixel minifigure: yellow head, dot eyes and a

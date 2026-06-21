@@ -4,7 +4,7 @@ import {
   uid, initial, viewFor, createHostHub, peerOptions,
 } from "./engine.js";
 import { LANGS, detectLang, saveLang, makeT } from "./i18n.js";
-import { RoundIcon, MurrayPix } from "./pixel.jsx";
+import { RoundIcon, MurrayPix, AlarmIcon } from "./pixel.jsx";
 import { CSS } from "./styles.js";
 
 /* ---------------------------- language ---------------------------- *
@@ -760,7 +760,7 @@ function Ready({ v, onIntent }) {
   const mineUp = !!v.myTeamId && v.myTeamId === v.teamUpId;
   return (
     <div className="fb-card fb-stack fb-center" style={{ "--tc": v.teamUpColor }}>
-      {v.turnNumber > 1 && <div className="fb-flash">{tr("ready.timesUp")}</div>}
+      {v.turnNumber > 1 && <div className="fb-flash"><AlarmIcon /> {tr("ready.timesUp")}</div>}
       <RoundLine r={r} />
       <div className="fb-uplabel">{mineUp ? tr("ready.yourTurn") : tr("ready.nowUp")}</div>
       <FitText className="fb-h1 fb-xl" style={{ color: v.teamUpColor }} text={v.teamUpName} min={20} />
