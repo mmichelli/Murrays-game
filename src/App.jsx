@@ -501,8 +501,7 @@ function HostLobby({ state, dispatch, hostId, roomCode, peerStatus, onExit }) {
 
       {tab === 2 && (
         <div className="fb-card fb-stack">
-          <h1 className="fb-h1">{t("lobby.theBowl")}</h1>
-          <WordCount n={state.bowl.length} />
+          <WordlistTitle n={state.bowl.length} />
           <WordAdder onAdd={(ws) => dispatch({ type: "ADD_WORDS", words: ws, by: hostId })}
             onRemove={(w) => dispatch({ type: "REMOVE_WORD", word: w, by: hostId })}
             words={state.bowl.filter((w) => (state.wordBy || {})[w.toLowerCase()] === hostId)}
@@ -705,8 +704,7 @@ function ClientApp({ onExit, initialRoom }) {
           onAddTeam={() => send({ t: "addTeam" })}
           canAddTeam={lobby.teams.length < lobby.maxTeams}
         />
-        <h1 className="fb-h1">{t("lobby.theBowl")}</h1>
-        <WordCount n={lobby.bowlCount} />
+        <WordlistTitle n={lobby.bowlCount} />
         <WordAdder onAdd={(ws) => send({ t: "words", words: ws })}
           onRemove={(w) => send({ t: "removeWord", word: w })}
           words={lobby.yourWords || []} count={myWords} target={target} />
@@ -1099,10 +1097,10 @@ function Arrivals({ players, myId }) {
     </div>
   );
 }
-// A big, fun tally of how many words are in the wordlist so far.
-function WordCount({ n }) {
+// The wordlist heading with the running count inline: "Wordlist 8".
+function WordlistTitle({ n }) {
   const t = useT();
-  return <p className="fb-wordcount"><b>{n}</b> {t("lobby.wordsLabel")}</p>;
+  return <h1 className="fb-h1 fb-yourwords">{t("lobby.theBowl")}<span className="fb-yourwordsnum">{n}</span></h1>;
 }
 // `count` is how many words this person has already dropped in; `target` is
 // the soft per-player goal. `words` are this person's own entries, each
@@ -1245,10 +1243,7 @@ const CSS = `
 .fb-wordprog{display:flex;justify-content:space-between;align-items:center;gap:8px;font-family:'Space Mono',monospace;font-size:11px;letter-spacing:.04em;color:var(--muted);text-transform:uppercase;}
 .fb-wordprog b{font-family:Anton,sans-serif;font-weight:400;font-size:16px;color:var(--accent);vertical-align:-2px;margin:0 2px;}
 .fb-wordprog.done{color:var(--green);}.fb-wordprog.done b{color:var(--green);}
-/* big fun wordlist tally */
-.fb-wordcount{margin:-4px 0 2px;font-family:'Space Mono',monospace;font-size:13px;color:var(--muted);text-transform:uppercase;letter-spacing:.08em;}
-.fb-wordcount b{font-family:Anton,sans-serif;font-weight:400;font-size:36px;color:var(--accent);vertical-align:-4px;margin-right:7px;text-shadow:2px 2px 0 var(--ink);}
-/* "Your words" heading + inline tally */
+/* "Wordlist"/"Your words" headings + inline tally */
 .fb-yourwords{display:flex;align-items:baseline;gap:9px;flex-wrap:wrap;}
 .fb-yourwordsnum{font-family:Anton,sans-serif;font-weight:400;font-size:19px;color:var(--accent);}
 .fb-wordhint{margin:-6px 0 0;font-family:'Space Mono',monospace;font-size:11px;letter-spacing:.04em;text-transform:uppercase;color:var(--muted);}
