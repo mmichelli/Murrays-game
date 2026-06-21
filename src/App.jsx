@@ -722,9 +722,10 @@ function ClientApp({ onExit, initialRoom }) {
 function ReconnectBanner({ show, online }) {
   const t = useT();
   if (!show) return null;
+  const label = online ? t("reconnect.online") : t("reconnect.offline");
   return (
-    <div className={`fb-reconnect ${online ? "" : "offline"}`}>
-      {online ? t("reconnect.online") : t("reconnect.offline")}
+    <div className={`fb-reconnect ${online ? "" : "offline"}`} role="status" title={label} aria-label={label}>
+      <span className="fb-reconnect-ico" aria-hidden="true">⟳</span>
     </div>
   );
 }
@@ -1256,10 +1257,15 @@ const CSS = `
 .fb-wordx{display:inline-flex;align-items:center;justify-content:center;width:21px;height:21px;border:1.5px solid var(--ink);border-radius:5px;
   background:var(--panel);color:var(--muted);font-size:16px;line-height:1;cursor:pointer;padding:0;flex:none;}
 .fb-wordx:hover{background:var(--red);color:#fff;}
-.fb-reconnect{position:sticky;top:0;z-index:60;margin-bottom:12px;background:var(--amber);color:var(--ink);border:2.5px solid var(--ink);border-radius:6px;
-  padding:9px 13px;font-family:'Space Mono',monospace;font-weight:700;font-size:12px;letter-spacing:.04em;text-align:center;
-  box-shadow:4px 4px 0 var(--ink);}
+/* a small fixed status badge - overlays the corner, never shifts the layout */
+.fb-reconnect{position:fixed;top:13px;right:13px;z-index:80;width:38px;height:38px;border-radius:50%;
+  display:flex;align-items:center;justify-content:center;background:var(--amber);color:var(--ink);
+  border:2.5px solid var(--ink);box-shadow:3px 3px 0 var(--ink);}
 .fb-reconnect.offline{background:#9AA0A8;}
+.fb-reconnect-ico{font-size:19px;line-height:1;font-weight:700;animation:fbspin 1s linear infinite;}
+.fb-reconnect.offline .fb-reconnect-ico{animation:none;}
+@keyframes fbspin{to{transform:rotate(360deg);}}
+@media (prefers-reduced-motion:reduce){.fb-reconnect-ico{animation:none;}}
 
 .fb-btn{background:var(--ink);color:var(--paper);border:3px solid var(--ink);border-radius:6px;padding:13px 16px;font-size:16px;font-weight:800;
   font-family:Archivo,sans-serif;cursor:pointer;width:100%;box-shadow:5px 5px 0 var(--accent);transition:transform .07s,box-shadow .07s;}
