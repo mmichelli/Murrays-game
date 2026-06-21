@@ -86,7 +86,7 @@ const STRINGS = {
     },
     ready: {
       timesUp: "⏰ Time's up!", yourTurn: "Your team's turn", nowUp: "Now up to give clues",
-      inherit: "You'd inherit one un-guessed card.",
+      inherit: "You'll start with last turn's leftover card.",
       illGive: ({ n }) => `I'll give clues · ${n}s`,
       someone: 'Someone tap "I\'ll give clues" on their phone.',
       watch: "Watch the room.",
@@ -175,7 +175,7 @@ const STRINGS = {
     },
     ready: {
       timesUp: "⏰ Tiden er ute!", yourTurn: "Lagets tur", nowUp: "Nå er det tur til å gi hint",
-      inherit: "Du arver ett ikke-gjettet kort.",
+      inherit: "Du starter med kortet som ble til overs forrige tur.",
       illGive: ({ n }) => `Jeg gir hint · ${n}s`,
       someone: 'Noen må trykke "Jeg gir hint" på telefonen sin.',
       watch: "Følg med i rommet.",
