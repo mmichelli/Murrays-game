@@ -486,7 +486,6 @@ function HostLobby({ state, dispatch, hostId, roomCode, peerStatus, onExit }) {
 
       {tab === 1 && (
         <div className="fb-card fb-stack">
-          <h2 className="fb-h2">{t("lobby.groupsTap", { n: teams.length })}</h2>
           <GroupBoard
             teams={teams} roster={roster} myId={hostId}
             myTeamId={state.players.find((p) => p.id === hostId)?.teamId}
