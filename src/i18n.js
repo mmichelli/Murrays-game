@@ -131,6 +131,12 @@ const STRINGS = {
       addMore: ({ n }) => `Add ${n} more from Murray's deck`,
     },
     lang: { label: "Language" },
+    teamNames: [
+      "Braai Bosses", "Load-Shedders", "Biltong Bandits", "Bunny Chow Crew",
+      "Durban Diehards", "Lekker Legends", "Vuvuzela Vandals", "Rooibos Rebels",
+      "Boerie Rollers", "The Tjommies", "Naartjie Ninjas", "Mzansi Maestros",
+      "Robot Runners", "Padkos Pirates", "Springbok Squad", "Eish Crew",
+    ],
     round: {
       1: { name: "Describe", setup: "", allowed: "Sentences, descriptions, sounds, gestures.", restrict: "Saying the word, part of it, or a rhyme.", gloss: "say anything but the word" },
       2: { name: "Charades", setup: "", allowed: "Full-body acting and miming.", restrict: "Talking, whispering or mouthing.", gloss: "act it out, no talking" },
@@ -222,6 +228,12 @@ const STRINGS = {
       addMore: ({ n }) => `Legg til ${n} til fra Murrays kortstokk`,
     },
     lang: { label: "Språk" },
+    teamNames: [
+      "Brunostbandittene", "Vaffelvikingene", "Fjordfantomene", "Elgjegerne",
+      "Pølsepatruljen", "Kos-kommandoen", "Nordlysninjaene", "Fjellrevene",
+      "Skitne Troll", "Måkemafiaen", "Bobler & Brak", "Russebussen",
+      "Kvikk Lunsj-laget", "Tåkelurene", "Bunadsbrigaden", "Akevitt-armeen",
+    ],
     round: {
       1: { name: "Forklar", setup: "", allowed: "Setninger, beskrivelser, lyder, fakter.", restrict: "Å si ordet, deler av det, eller rim.", gloss: "si hva som helst utenom ordet" },
       2: { name: "Charade", setup: "", allowed: "Helkroppsspill og miming.", restrict: "Å snakke, hviske eller forme ord med munnen.", gloss: "spill det ut, ingen prat" },
@@ -246,6 +258,13 @@ export function makeT(lang) {
     if (typeof v === "function") return v(params || {});
     return v === undefined ? key : v;
   };
+}
+// Pick a fun, themed team name in `lang`, avoiding any already in `taken`.
+// Falls back to a plain "Team N" once the pool is exhausted (or unknown lang).
+export function randomTeamName(lang, taken = []) {
+  const pool = (STRINGS[lang]?.teamNames || STRINGS.en.teamNames || []).filter((n) => !taken.includes(n));
+  if (pool.length) return pool[Math.floor(Math.random() * pool.length)];
+  return `Team ${taken.length + 1}`;
 }
 // Convenience: the four pieces of round text for round `n`, localized.
 export function roundText(t, n) {

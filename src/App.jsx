@@ -3,7 +3,7 @@ import {
   ROUNDS, PALETTE, MIN_WORDS, MAX_TEAMS, TURN_SECONDS, WORDS_PER_PLAYER, sampleDeck, deckTopUp,
   uid, initial, viewFor, createHostHub, peerOptions,
 } from "./engine.js";
-import { LANGS, detectLang, saveLang, makeT } from "./i18n.js";
+import { LANGS, detectLang, saveLang, makeT, randomTeamName } from "./i18n.js";
 import { RoundIcon, MurrayPix, AlarmIcon, LoaderIcon, ChevronIcon, CheckIcon, CloseIcon, PlusIcon, PlayIcon, AlertIcon } from "./pixel.jsx";
 import { CSS } from "./styles.js";
 
@@ -231,17 +231,25 @@ function Landing({ onPick }) {
 
 /* ============================== HOST ============================== */
 function HostApp({ onExit }) {
-  const t = useT();
+  const { lang, t } = useLang();
   // Rehydrate the room across a reload: same code (so phones reconnect to the
   // same broker id), same host identity, same in-progress game.
   const saved = useRef(ssGet(PK.host)).current;
   const hostId = useRef(saved?.hostId || uid()).current;
   const roomCode = useRef(saved?.roomCode || makeRoomCode()).current;
   const [state, setState] = useState(saved?.state || initial);
+  // Latest language, read by the hub when a phone asks for a new group so the
+  // name it coins matches the host's chosen language.
+  const langRef = useRef(lang); langRef.current = lang;
   const hubRef = useRef(null);
-  if (!hubRef.current) hubRef.current = createHostHub({ onState: setState, initialState: saved?.state || initial });
+  if (!hubRef.current) hubRef.current = createHostHub({
+    onState: setState, initialState: saved?.state || initial,
+    nextTeamName: (taken) => randomTeamName(langRef.current, taken),
+  });
   const hub = hubRef.current;
   const dispatch = useCallback((a) => hub.dispatch(a), [hub]);
+  // Add a group under a fun, themed name, avoiding the ones already in play.
+  const addTeam = useCallback(() => dispatch({ type: "ADD_TEAM", name: randomTeamName(langRef.current, hub.getState().teams.map((tm) => tm.name)) }), [dispatch, hub]);
 
   const [name, setName] = useState(saved?.name || "");
   const [open, setOpen] = useState(!!saved?.open);
@@ -356,8 +364,8 @@ function HostApp({ onExit }) {
 
   const openRoom = () => {
     if (!name.trim()) return;
-    dispatch({ type: "ADD_TEAM" });
-    dispatch({ type: "ADD_TEAM" });
+    addTeam();
+    addTeam();
     const first = hub.getState().teams[0]?.id;
     dispatch({ type: "ADD_PLAYER", player: { id: hostId, name: name.trim(), teamId: first, isHost: true } });
     setOpen(true);
@@ -444,7 +452,7 @@ function HostLobby({ state, dispatch, hostId, roomCode, peerStatus, onExit }) {
             myTeamId={state.players.find((p) => p.id === hostId)?.teamId}
             onPick={(teamId) => dispatch({ type: "SET_TEAM", id: hostId, teamId })}
             onRename={(id, name) => dispatch({ type: "RENAME_TEAM", id, name })}
-            onAddTeam={() => dispatch({ type: "ADD_TEAM" })}
+            onAddTeam={addTeam}
             canAddTeam={teams.length < MAX_TEAMS}
             onRemoveTeam={(id) => dispatch({ type: "REMOVE_TEAM", id })}
           />

@@ -153,7 +153,7 @@ export const initial = {
 export function reducer(state, a) {
   switch (a.type) {
     case "ADD_TEAM": return state.teams.length >= MAX_TEAMS ? state
-      : { ...state, teams: [...state.teams, { id: uid(), name: `Team ${state.teams.length + 1}` }] };
+      : { ...state, teams: [...state.teams, { id: uid(), name: a.name || `Team ${state.teams.length + 1}` }] };
     case "REMOVE_TEAM": return state.teams.length <= 2 ? state
       : { ...state, teams: state.teams.filter((t) => t.id !== a.id),
           players: state.players.map((p) => p.teamId === a.id ? { ...p, teamId: null } : p) };
@@ -302,7 +302,7 @@ export const lobbyFor = (s, pid) => ({
  *   { readyState, send(str), onmessage(ev), onclose() }  plus a
  *   private `_pid` we stamp on once the player says hello.
  * ------------------------------------------------------------------ */
-export function createHostHub({ onState, initialState } = {}) {
+export function createHostHub({ onState, initialState, nextTeamName } = {}) {
   // Rehydrate from a persisted snapshot when the host reloads, so an
   // in-progress game (players, teams, bowl, scores, round, timer) is recovered
   // and reconnecting phones rejoin the same game rather than an empty lobby.
@@ -340,7 +340,7 @@ export function createHostHub({ onState, initialState } = {}) {
     } else if (m.t === "setTeam" && ch._pid) {
       dispatch({ type: "SET_TEAM", id: ch._pid, teamId: m.teamId });
     } else if (m.t === "addTeam" && ch._pid) {
-      dispatch({ type: "ADD_TEAM" });
+      dispatch({ type: "ADD_TEAM", name: nextTeamName?.(state.teams.map((t) => t.name)) });
     } else if (m.t === "renameTeam" && ch._pid) {
       dispatch({ type: "RENAME_TEAM", id: m.id, name: (m.name || "").slice(0, 16) });
     } else if (m.t === "words" && ch._pid) {

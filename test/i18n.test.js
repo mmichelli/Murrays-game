@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach } from "vitest";
-import { LANGS, DEFAULT_LANG, browserLang, detectLang, saveLang, makeT, roundText } from "../src/i18n.js";
+import { LANGS, DEFAULT_LANG, browserLang, detectLang, saveLang, makeT, roundText, randomTeamName } from "../src/i18n.js";
 import { ROUNDS } from "../src/engine.js";
 
 // Stand in a navigator + localStorage so the browser-facing helpers are
@@ -134,3 +134,40 @@ describe("roundText", () => {
     expect(roundText(makeT("no"), 1).name).toBe("Forklar");
   });
 });
+
+describe("randomTeamName", () => {
+  it("draws a themed name from the language's pool", () => {
+    for (const lang of ["en", "no"]) {
+      const name = randomTeamName(lang, []);
+      expect(typeof name).toBe("string");
+      expect(name.length).toBeGreaterThan(0);
+    }
+  });
+  it("never repeats a name already taken", () => {
+    // Exhaust the pool one draw at a time; every pick must be fresh.
+    const taken = [];
+    for (let i = 0; i < 16; i++) {
+      const n = randomTeamName("en", taken);
+      expect(taken).not.toContain(n);
+      taken.push(n);
+    }
+  });
+  it("falls back to a plain Team N once the pool is spent", () => {
+    const taken = randomTeamNamesPool("en");
+    expect(randomTeamName("en", taken)).toBe(`Team ${taken.length + 1}`);
+  });
+  it("falls back to English for an unknown language", () => {
+    expect(typeof randomTeamName("xx", [])).toBe("string");
+  });
+});
+
+// Helper: drain the whole pool by repeatedly drawing unique names.
+function randomTeamNamesPool(lang) {
+  const taken = [];
+  for (let i = 0; i < 64; i++) {
+    const n = randomTeamName(lang, taken);
+    if (/^Team \d+$/.test(n)) break; // pool exhausted
+    taken.push(n);
+  }
+  return taken;
+}
