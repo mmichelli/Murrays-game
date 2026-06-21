@@ -3,7 +3,7 @@
 [![CI](https://github.com/mmichelli/Murrays-game/actions/workflows/ci.yml/badge.svg)](https://github.com/mmichelli/Murrays-game/actions/workflows/ci.yml)
 [![Deploy to GitHub Pages](https://github.com/mmichelli/Murrays-game/actions/workflows/deploy.yml/badge.svg)](https://github.com/mmichelli/Murrays-game/actions/workflows/deploy.yml)
 
-**A 5-round Fishbowl party game** - the one you might also know as **Celebrity**, **Salad Bowl**, **Monikers** or **the Hat Game**. Built for South African students and named after Murray, the varsity mate who first taught us to play.
+**A 5-round Fishbowl party game** - the one you might also know as **Celebrity**, **Salad Bowl**, **Monikers** or **the Hat Game**. Named after Murray, one of the guys at UKZN who taught our group the game. Plays in **English or Norwegian** (it follows your browser's language and remembers your pick), with a chunky neo-brutalist, pixel-art look.
 
 Runs entirely peer-to-peer in the browser - **no backend, no accounts, no install.**
 
@@ -11,13 +11,13 @@ Runs entirely peer-to-peer in the browser - **no backend, no accounts, no instal
 
 **What you'll need:** a group of friends, one phone per player with a modern browser (Chrome, Safari, Edge), and everyone on the same WiFi. No app to download - just open the link.
 
-One phone opens the **room** (it's the authoritative game engine, timer, and hub) and gets a **shareable link + QR code**. Everyone else just scans or taps the link to join - no codes to copy. Then everyone drops words into a shared bowl in parallel, organises into groups, and plays - the secret word is only ever sent to the device of the player currently giving clues.
+One phone **creates the game** (it's the authoritative game engine, timer, and hub) and gets a **shareable link + QR code**. Everyone else just scans or taps the link to join - no codes to copy, and they pop into a live "who's here" roster as they arrive. Then everyone drops words into a shared **wordlist** in parallel (you can delete your own), organises into groups, and plays - the secret word is only ever sent to the device of the player currently giving clues.
 
-Load **Murray's deck** for an instant SA-flavoured bowl: braai, load shedding, hadeda, Madiba, babbelas, the Bokke and more.
+Load **Murray's deck** for an instant SA-flavoured wordlist: braai, load shedding, hadeda, Madiba, babbelas, the Bokke and more.
 
 ## The five rounds
 
-Same bowl of words cycles through all five rounds - it just gets harder:
+The same wordlist cycles through all five rounds - it just gets harder:
 
 | # | Round | How to give clues |
 |---|-------|-------------------|
@@ -29,8 +29,10 @@ Same bowl of words cycles through all five rounds - it just gets harder:
 
 ## How to play
 
-- **Host:** "Open a room" → name yourself → show the **QR / link** so everyone can join → tap *Load Murray's deck* → Start.
-- **Player:** scan the QR or open the link → type your name → you're in. Anyone can **see every group's live count and who's in it, add a group, or rename one**, then join a group and add words.
+- **Host:** "Create a game" → name yourself → show the **QR / link** so everyone can join → fill the wordlist (your own words, or top up from *Murray's deck*) → Start.
+- **Player:** scan the QR or open the link → type your name → you're in. Anyone can **see every group's live count and who's in it, add a group, or rename one**, then join a group and add words (and remove their own).
+
+Pick your language with the **EN / NO** toggle at the top - it switches the whole UI instantly and is remembered next time.
 
 The live site is served over HTTPS, so WebRTC works straight from your phones - just get everyone on the same WiFi for the most reliable connection.
 
@@ -38,7 +40,7 @@ The live site is served over HTTPS, so WebRTC works straight from your phones - 
 
 Joining is a **one-tap shareable link** (`?room=CODE`). A free public [PeerJS](https://peerjs.com) broker handles **only the WebRTC handshake** - it never sees any game data. The moment two phones are introduced, a direct `RTCDataChannel` opens and everything (words included) flows peer-to-peer, so the word-privacy guarantee is unchanged.
 
-The host (`createHostHub` in [`src/engine.js`](src/engine.js)) runs the single source of truth and broadcasts a **privacy-filtered view** to each device, so only the active clue-giver ever sees the word. Players send only *intents* (`claim turn`, `correct`, `resume`) and lobby actions (`set group`, `add group`, `rename group`, `add words`) - the host validates and applies them. The SDP signaling codec and in-memory loopback tests still cover the channel-level protocol regardless of how the handshake is brokered.
+The host (`createHostHub` in [`src/engine.js`](src/engine.js)) runs the single source of truth and broadcasts a **privacy-filtered view** to each device, so only the active clue-giver ever sees the word. Players send only *intents* (`claim turn`, `correct`, `resume`) and lobby actions (`set group`, `add group`, `rename group`, `add words`, `remove word`) - the host validates and applies them. The SDP signaling codec and in-memory loopback tests still cover the channel-level protocol regardless of how the handshake is brokered.
 
 To keep clue-giving snappy over the wire, the giver's view also carries a tiny **lookahead buffer** (the next couple of cards, giver-only - never watchers, never the other team). Their phone flips to the next word the instant they tap CORRECT and reconciles to the host afterwards, so latency or a brief blip doesn't stall the turn. It stays purely cosmetic: the host remains the sole authority for scoring and round progression, and the buffer is naturally empty at a round boundary so the host always drives the transition.
 
@@ -47,8 +49,8 @@ To keep clue-giving snappy over the wire, the giver's view also carries a tiny *
 Real phones drop the WebRTC link constantly - backgrounding, screen locks, signal blips. The app is built to ride through it:
 
 - **Stable seats.** Each device keeps a stable per-room id, so a phone that drops, reloads, or backgrounds **reclaims its exact seat** - same team, score, turn and words - instead of rejoining as a stranger.
-- **Survives a full page reload.** A refresh tears down the whole JS context, but each tab remembers its role and room in `sessionStorage`, so it silently re-dials and picks up where it left off - no re-typing, no "reload to rejoin". The host keeps the **same room code** (so phones reconnect to the same broker id, even briefly racing its own freed registration) and recovers the **entire in-progress game** - players, teams, bowl, scores, round and timer - via `createHostHub({ initialState })`. A player just remembers their name + code and auto-rejoins.
-- **Auto-reconnect.** Clients retry with backoff, instantly on tab-refocus / network-return, and on a silent ICE failure (which doesn't always fire a clean close). A banner with a **Retry now** button shows while it's working.
+- **Survives a full page reload.** A refresh tears down the whole JS context, but each tab remembers its role and room in `sessionStorage`, so it silently re-dials and picks up where it left off - no re-typing, no "reload to rejoin". The host keeps the **same room code** (so phones reconnect to the same broker id, even briefly racing its own freed registration) and recovers the **entire in-progress game** - players, teams, wordlist, scores, round and timer - via `createHostHub({ initialState })`. A player just remembers their name + code and auto-rejoins.
+- **Auto-reconnect.** Clients retry with backoff, instantly on tab-refocus / network-return, and on a silent ICE failure (which doesn't always fire a clean close). A small, fixed status icon spins in the corner while it's working - no button to press, and it never shifts the layout. A group you pick while offline is re-sent the moment you're back.
 - **Seats survive drops.** The host marks a dropped player *offline* rather than deleting them; genuine lobby ghosts are pruned only after a grace period, never mid-game. The host also rebuilds its own broker link on a blip.
 - **Wall-clock timer.** The turn countdown is driven by real elapsed time, so a locked host screen can't freeze the clock.
 
@@ -80,17 +82,19 @@ npm run build      # production build
 
 ## Tests & CI
 
-The pure game engine and the **entire peer-to-peer message protocol** are unit-tested with [Vitest](https://vitest.dev):
+The pure game engine, the **entire peer-to-peer message protocol**, and the language layer are unit-tested with [Vitest](https://vitest.dev):
 
-- [`test/engine.test.js`](test/engine.test.js) - the reducer, round progression, scoring, the wall-clock catch-up timer, keep-seat-on-disconnect, per-player word tallies, the word-privacy filter, the signaling codec, and the ICE/peer config.
+- [`test/engine.test.js`](test/engine.test.js) - the reducer, round progression, scoring, the wall-clock catch-up timer, keep-seat-on-disconnect, per-player word tallies, **word ownership and author-only removal**, the word-privacy filter, the signaling codec, and the ICE/peer config.
 - [`test/p2p.test.js`](test/p2p.test.js) - drives `createHostHub` over an in-memory loopback of a WebRTC data-channel pair: players connecting, picking groups, **adding and renaming groups, per-group counts and who's-in-which-group snapshots**, adding words (with de-dup and per-person attribution), **a phone dropping and reclaiming its exact seat on reconnect**, and - critically - a test that **proves the secret word never reaches any device except the active clue-giver's**, even over the wire.
+- [`test/i18n.test.js`](test/i18n.test.js) - language detection (following the browser's preferences), persistence, fallback, interpolation/pluralisation, and the English + Norwegian round text.
 
 Both run automatically in GitHub Actions on every push and pull request ([`.github/workflows/ci.yml`](.github/workflows/ci.yml)), and again before each Pages deploy ([`.github/workflows/deploy.yml`](.github/workflows/deploy.yml)).
 
 ```bash
 npm test
-# ✓ test/engine.test.js (23 tests)
-# ✓ test/p2p.test.js    (11 tests)
+# ✓ test/i18n.test.js   (19 tests)
+# ✓ test/engine.test.js (33 tests)
+# ✓ test/p2p.test.js    (12 tests)
 ```
 
 ## Stack
@@ -98,6 +102,7 @@ npm test
 - React 18 + Vite
 - [PeerJS](https://peerjs.com) for one-tap link joining (handshake only) over WebRTC `RTCDataChannel` (Google STUN for NAT traversal)
 - `qrcode` for the scan-to-join code
-- Vitest for the engine + P2P protocol tests
+- [Pixelarticons](https://pixelarticons.com) (MIT) for the pixel-art round icons; Murray and the player avatars are hand-pixelled minifigures
+- Vitest for the engine, P2P protocol, and i18n tests
 - GitHub Actions → GitHub Pages for hosting
-- No router, no state library, no CSS framework - game logic is one tested module, the UI is one component
+- No router, no state library, no CSS framework, no i18n library - game logic is one tested module, the language layer is a small tested module, and the UI is one component
