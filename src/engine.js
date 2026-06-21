@@ -146,7 +146,7 @@ function resolveDeckEmpty(s) {
 }
 
 export const initial = {
-  phase: "lobby", teams: [], players: [], bowl: [], wordCounts: {},
+  phase: "lobby", teams: [], players: [], bowl: [], wordCounts: {}, wordBy: {},
   deck: [], discard: [], activeCard: null,
   currentRound: 1, activeTeamIdx: 0, activePlayerId: null,
   timeLeft: TURN_SECONDS, running: false, scores: {}, turnNumber: 1, lastCompleted: 0,
@@ -179,7 +179,21 @@ export function reducer(state, a) {
       const wordCounts = a.by
         ? { ...state.wordCounts, [a.by]: (state.wordCounts[a.by] || 0) + add.length }
         : state.wordCounts;
-      return { ...state, bowl: [...state.bowl, ...add], wordCounts };
+      // Remember who added each word so they can list and remove their own.
+      let wordBy = state.wordBy || {};
+      if (a.by) { wordBy = { ...wordBy }; for (const w of add) wordBy[w.toLowerCase()] = a.by; }
+      return { ...state, bowl: [...state.bowl, ...add], wordCounts, wordBy };
+    }
+    // Pull a word back out of the wordlist - only its own author, only in the
+    // lobby (before the deck is shuffled into play).
+    case "REMOVE_WORD": {
+      if (state.phase !== "lobby") return state;
+      const w = (a.word || "").trim().toLowerCase();
+      if (!w || (state.wordBy || {})[w] !== a.by) return state;
+      if (!state.bowl.some((x) => x.toLowerCase() === w)) return state;
+      const { [w]: _gone, ...wordBy } = state.wordBy || {};
+      const wordCounts = { ...state.wordCounts, [a.by]: Math.max(0, (state.wordCounts[a.by] || 0) - 1) };
+      return { ...state, bowl: state.bowl.filter((x) => x.toLowerCase() !== w), wordBy, wordCounts };
     }
 
     case "START_GAME": {
@@ -270,6 +284,8 @@ export const lobbyFor = (s, pid) => ({
     id: p.id, name: p.name, teamId: p.teamId, isHost: !!p.isHost,
     connected: p.connected !== false, words: s.wordCounts[p.id] || 0,
   })),
+  // This device's own words, so it can list and delete them.
+  yourWords: s.bowl.filter((w) => (s.wordBy || {})[w.toLowerCase()] === pid),
 });
 
 /* ------------------------ P2P host hub ---------------------------- *
@@ -322,6 +338,8 @@ export function createHostHub({ onState, initialState } = {}) {
       dispatch({ type: "RENAME_TEAM", id: m.id, name: (m.name || "").slice(0, 16) });
     } else if (m.t === "words" && ch._pid) {
       dispatch({ type: "ADD_WORDS", words: m.words || [], by: ch._pid });
+    } else if (m.t === "removeWord" && ch._pid) {
+      dispatch({ type: "REMOVE_WORD", word: m.word, by: ch._pid });
     } else if (m.t === "intent" && ch._pid) {
       dispatch({ type: m.action, fromId: ch._pid });
     }

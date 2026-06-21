@@ -501,9 +501,11 @@ function HostLobby({ state, dispatch, hostId, roomCode, peerStatus, onExit }) {
 
       {tab === 2 && (
         <div className="fb-card fb-stack">
-          <h2 className="fb-h2">{t("lobby.theBowl")}</h2>
-          <p className="fb-muted"><b className="fb-num">{state.bowl.length}</b> {t("lobby.bowlInfo")}</p>
+          <h1 className="fb-h1">{t("lobby.theBowl")}</h1>
+          <WordCount n={state.bowl.length} />
           <WordAdder onAdd={(ws) => dispatch({ type: "ADD_WORDS", words: ws, by: hostId })}
+            onRemove={(w) => dispatch({ type: "REMOVE_WORD", word: w, by: hostId })}
+            words={state.bowl.filter((w) => (state.wordBy || {})[w.toLowerCase()] === hostId)}
             count={state.wordCounts[hostId] || 0} target={WORDS_PER_PLAYER} />
           <DeckFill bowl={state.bowl} players={state.players.length}
             onAdd={(ws) => dispatch({ type: "ADD_WORDS", words: ws })} />
@@ -703,9 +705,11 @@ function ClientApp({ onExit, initialRoom }) {
           onAddTeam={() => send({ t: "addTeam" })}
           canAddTeam={lobby.teams.length < lobby.maxTeams}
         />
-        <h2 className="fb-h2">{t("lobby.theBowl")}</h2>
-        <p className="fb-muted"><b className="fb-num">{lobby.bowlCount}</b> {t("client.bowlInfo")}</p>
-        <WordAdder onAdd={(ws) => send({ t: "words", words: ws })} count={myWords} target={target} />
+        <h1 className="fb-h1">{t("lobby.theBowl")}</h1>
+        <WordCount n={lobby.bowlCount} />
+        <WordAdder onAdd={(ws) => send({ t: "words", words: ws })}
+          onRemove={(w) => send({ t: "removeWord", word: w })}
+          words={lobby.yourWords || []} count={myWords} target={target} />
         <p className="fb-tiny">{myTeam ? t("client.waitHost") : t("client.joinGroupReady")}</p>
       </>)}
     </div>
@@ -1095,9 +1099,15 @@ function Arrivals({ players, myId }) {
     </div>
   );
 }
+// A big, fun tally of how many words are in the wordlist so far.
+function WordCount({ n }) {
+  const t = useT();
+  return <p className="fb-wordcount"><b>{n}</b> {t("lobby.wordsLabel")}</p>;
+}
 // `count` is how many words this person has already dropped in; `target` is
-// the soft per-player goal. The deck button only ever tops you up to the goal.
-function WordAdder({ onAdd, count = 0, target = 0 }) {
+// the soft per-player goal. `words` are this person's own entries, each
+// removable via `onRemove`. The deck button tops you up to the goal.
+function WordAdder({ onAdd, onRemove, words = [], count = 0, target = 0 }) {
   const t = useT();
   const [draft, setDraft] = useState("");
   const add = () => { const w = draft.trim(); if (!w) return; onAdd([w]); setDraft(""); };
@@ -1105,17 +1115,22 @@ function WordAdder({ onAdd, count = 0, target = 0 }) {
   const done = target > 0 && remaining === 0;
   return (
     <div className="fb-stack">
-      {target > 0 && (
-        <div className={`fb-wordprog ${done ? "done" : ""}`}>
-          <span>{t("words.progressLead")} <b>{count}/{target}</b></span>
-          <span>{done ? t("words.plenty") : t("words.toGo", { n: remaining })}</span>
-        </div>
-      )}
+      <h2 className="fb-h1 fb-yourwords">{t("words.progressLead")}{target > 0 && <span className="fb-yourwordsnum">{count}/{target}</span>}</h2>
+      {target > 0 && <p className={`fb-wordhint ${done ? "done" : ""}`}>{done ? t("words.plenty") : t("words.toGo", { n: remaining })}</p>}
       <div className="fb-row">
         <input className="fb-input" value={draft} placeholder={t("words.typeWord")} maxLength={40} autoFocus
           onChange={(e) => setDraft(e.target.value)} onKeyDown={(e) => e.key === "Enter" && add()} />
         <button className="fb-btn fb-add" onClick={add}>{t("common.add")}</button>
       </div>
+      {onRemove && words.length > 0 && (
+        <div className="fb-mywords">
+          {words.map((w) => (
+            <span key={w} className="fb-myword">{w}
+              <button className="fb-wordx" aria-label={t("words.deleteAria", { w })} onClick={() => onRemove(w)}>×</button>
+            </span>
+          ))}
+        </div>
+      )}
       {remaining > 0 && (
         <button className="fb-btn fb-ghost" onClick={() => onAdd(sampleDeck(remaining))}>
           {t("words.fillMine", { n: remaining })}
@@ -1230,6 +1245,21 @@ const CSS = `
 .fb-wordprog{display:flex;justify-content:space-between;align-items:center;gap:8px;font-family:'Space Mono',monospace;font-size:11px;letter-spacing:.04em;color:var(--muted);text-transform:uppercase;}
 .fb-wordprog b{font-family:Anton,sans-serif;font-weight:400;font-size:16px;color:var(--accent);vertical-align:-2px;margin:0 2px;}
 .fb-wordprog.done{color:var(--green);}.fb-wordprog.done b{color:var(--green);}
+/* big fun wordlist tally */
+.fb-wordcount{margin:-4px 0 2px;font-family:'Space Mono',monospace;font-size:13px;color:var(--muted);text-transform:uppercase;letter-spacing:.08em;}
+.fb-wordcount b{font-family:Anton,sans-serif;font-weight:400;font-size:36px;color:var(--accent);vertical-align:-4px;margin-right:7px;text-shadow:2px 2px 0 var(--ink);}
+/* "Your words" heading + inline tally */
+.fb-yourwords{display:flex;align-items:baseline;gap:9px;flex-wrap:wrap;}
+.fb-yourwordsnum{font-family:Anton,sans-serif;font-weight:400;font-size:19px;color:var(--accent);}
+.fb-wordhint{margin:-6px 0 0;font-family:'Space Mono',monospace;font-size:11px;letter-spacing:.04em;text-transform:uppercase;color:var(--muted);}
+.fb-wordhint.done{color:var(--green);}
+/* your own words, each removable */
+.fb-mywords{display:flex;flex-wrap:wrap;gap:7px;}
+.fb-myword{display:inline-flex;align-items:center;gap:7px;background:#fff;border:2px solid var(--ink);border-radius:7px;box-shadow:2px 2px 0 var(--ink);
+  padding:4px 4px 4px 11px;font-family:Archivo,sans-serif;font-weight:800;font-size:14px;color:var(--ink);}
+.fb-wordx{display:inline-flex;align-items:center;justify-content:center;width:21px;height:21px;border:1.5px solid var(--ink);border-radius:5px;
+  background:var(--panel);color:var(--muted);font-size:16px;line-height:1;cursor:pointer;padding:0;flex:none;}
+.fb-wordx:hover{background:var(--red);color:#fff;}
 .fb-reconnect{position:sticky;top:0;z-index:60;margin-bottom:12px;background:var(--amber);color:var(--ink);border:2.5px solid var(--ink);border-radius:6px;
   padding:9px 13px;font-family:'Space Mono',monospace;font-weight:700;font-size:12px;letter-spacing:.04em;text-align:center;
   box-shadow:4px 4px 0 var(--ink);}

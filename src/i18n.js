@@ -68,7 +68,7 @@ const STRINGS = {
     lobby: {
       nextGroups: "Next · groups →", nextBowl: "Next · the wordlist →",
       groupsTap: ({ n }) => `Groups · ${n} · tap to join`,
-      theBowl: "The wordlist",
+      theBowl: "The wordlist", wordsLabel: "words",
       bowlInfo: "in the wordlist",
       start: "Start game", waitPlayers: "Waiting for players to join",
       addMore: ({ n }) => `Add ${n} more words`,
@@ -128,6 +128,7 @@ const STRINGS = {
     words: {
       progressLead: "Your words", plenty: "✓ that's plenty",
       toGo: ({ n }) => `${n} to go`, typeWord: "Type a word…",
+      deleteAria: ({ w }) => `Delete "${w}"`,
       fillMine: ({ n }) => `Fill my ${n} from Murray's deck`,
       hidden: "Your words stay hidden from everyone until they're in play.",
     },
@@ -165,7 +166,7 @@ const STRINGS = {
     lobby: {
       nextGroups: "Neste · grupper →", nextBowl: "Neste · ordlisten →",
       groupsTap: ({ n }) => `Grupper · ${n} · trykk for å bli med`,
-      theBowl: "Ordlisten",
+      theBowl: "Ordlisten", wordsLabel: "ord",
       bowlInfo: "i ordlisten",
       start: "Start spillet", waitPlayers: "Venter på at spillere blir med",
       addMore: ({ n }) => `Legg til ${n} ord til`,
@@ -225,6 +226,7 @@ const STRINGS = {
     words: {
       progressLead: "Dine ord", plenty: "✓ det holder",
       toGo: ({ n }) => `${n} igjen`, typeWord: "Skriv et ord…",
+      deleteAria: ({ w }) => `Slett "${w}"`,
       fillMine: ({ n }) => `Fyll mine ${n} fra Murrays kortstokk`,
       hidden: "Ordene dine er skjult for alle til de er i spill.",
     },

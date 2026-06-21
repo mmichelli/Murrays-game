@@ -358,6 +358,39 @@ describe("lobbyFor", () => {
   });
 });
 
+describe("word ownership + removal", () => {
+  it("tracks each author's own words and lists them via lobbyFor", () => {
+    const s = run(initial, [
+      { type: "ADD_WORDS", words: ["Braai", "Biltong"], by: "p1" },
+      { type: "ADD_WORDS", words: ["Rugby"], by: "p2" },
+      { type: "ADD_WORDS", words: ["Anon"] }, // no author
+    ]);
+    expect(lobbyFor(s, "p1").yourWords).toEqual(["Braai", "Biltong"]);
+    expect(lobbyFor(s, "p2").yourWords).toEqual(["Rugby"]);
+    expect(lobbyFor(s, "nobody").yourWords).toEqual([]);
+  });
+  it("lets only the author remove their word, case-insensitively", () => {
+    let s = run(initial, [{ type: "ADD_WORDS", words: ["Braai", "Biltong"], by: "p1" }]);
+    s = reducer(s, { type: "REMOVE_WORD", word: "Braai", by: "p2" }); // not the author
+    expect(s.bowl).toContain("Braai");
+    s = reducer(s, { type: "REMOVE_WORD", word: "braai", by: "p1" }); // author, any case
+    expect(s.bowl).not.toContain("Braai");
+    expect(s.wordCounts.p1).toBe(1);
+    expect(lobbyFor(s, "p1").yourWords).toEqual(["Biltong"]);
+  });
+  it("won't remove words once the game has started", () => {
+    let s = run(initial, [
+      { type: "ADD_TEAM" }, { type: "ADD_TEAM" },
+      { type: "ADD_WORDS", words: ["a", "b", "c", "d"], by: "p1" },
+    ]);
+    s = reducer(s, { type: "ADD_PLAYER", player: { id: "p1", name: "Ann", teamId: s.teams[0].id } });
+    s = reducer(s, { type: "START_GAME" });
+    const before = s.bowl.length;
+    s = reducer(s, { type: "REMOVE_WORD", word: "a", by: "p1" });
+    expect(s.bowl.length).toBe(before);
+  });
+});
+
 describe("signaling codec", () => {
   it("round-trips an SDP description through encode/decode", () => {
     const offer = { type: "offer", sdp: "v=0\r\no=- 42 2 IN IP4 127.0.0.1\r\ns=-\r\n" };
