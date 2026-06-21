@@ -1122,7 +1122,6 @@ function WordAdder({ onAdd, count = 0, target = 0 }) {
           {t("words.fillMine", { n: remaining })}
         </button>
       )}
-      {count > 0 && <p className="fb-tiny">{t("words.hidden")}</p>}
     </div>
   );
 }
