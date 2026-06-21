@@ -105,6 +105,16 @@ export const CSS = `
 .fb-reconnect.offline .fb-reconnect-ico{animation:none;}
 @keyframes fbspin{to{transform:rotate(360deg);}}
 @media (prefers-reduced-motion:reduce){.fb-reconnect-ico{animation:none;}}
+/* join-handshake progress checklist */
+.fb-connsteps{list-style:none;margin:10px auto;padding:0;display:flex;flex-direction:column;gap:11px;align-items:flex-start;}
+.fb-connstep{display:flex;align-items:center;gap:11px;font-family:'Space Mono',monospace;font-weight:700;font-size:14px;letter-spacing:.03em;color:var(--muted);}
+.fb-connstep.now,.fb-connstep.done{color:var(--ink);}
+.fb-connmark{display:inline-flex;align-items:center;justify-content:center;width:24px;height:24px;font-size:15px;line-height:1;flex:none;border-radius:50%;}
+.fb-connstep:not(.now):not(.done) .fb-connmark{border:2px solid var(--line);}
+.fb-connstep.done .fb-connmark{background:var(--green);color:#fff;font-size:13px;}
+.fb-connstep.now .fb-connmark{color:var(--accent);animation:fbspin 1s linear infinite;}
+.fb-connhint{margin:2px 0 0;text-align:center;font-family:'Space Mono',monospace;font-size:12px;line-height:1.5;color:var(--muted);}
+@media (prefers-reduced-motion:reduce){.fb-connstep.now .fb-connmark{animation:none;}}
 
 .fb-btn{background:var(--ink);color:var(--paper);border:3px solid var(--ink);border-radius:6px;padding:13px 16px;font-size:16px;font-weight:800;
   font-family:Archivo,sans-serif;cursor:pointer;width:100%;box-shadow:5px 5px 0 var(--accent);transition:transform .07s,box-shadow .07s;}

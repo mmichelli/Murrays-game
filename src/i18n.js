@@ -76,8 +76,10 @@ const STRINGS = {
     client: {
       joinRoom: "Join a room",
       joiningRoom: ({ code }) => ["Joining room ", { b: code }, ". Just pop your name in."],
-      roomCode: "Room code", join: "Join room", connecting: "Connecting…",
-      reaching: "Reaching the room…", roomNotAnswering: "Room not answering yet, retrying…",
+      roomCode: "Room code", join: "Join room",
+      stepStart: "Starting up", stepReach: "Reaching the host", stepJoin: "Joining the room",
+      hostNotFound: "Can't reach the room yet - make sure the host's page is open. Retrying…",
+      badBrowser: "This browser can't connect. Try Chrome, Safari or Edge.",
       waitHost: "Waiting for the host to start…", joinGroupReady: "Join a group to be ready.",
     },
     reconnect: {
@@ -165,8 +167,10 @@ const STRINGS = {
     client: {
       joinRoom: "Bli med i et rom",
       joiningRoom: ({ code }) => ["Blir med i rom ", { b: code }, ". Bare skriv inn navnet ditt."],
-      roomCode: "Romkode", join: "Bli med", connecting: "Kobler til…",
-      reaching: "Når rommet…", roomNotAnswering: "Rommet svarer ikke ennå, prøver igjen…",
+      roomCode: "Romkode", join: "Bli med",
+      stepStart: "Starter opp", stepReach: "Når verten", stepJoin: "Blir med i rommet",
+      hostNotFound: "Får ikke kontakt med rommet ennå - sørg for at vertens side er åpen. Prøver igjen…",
+      badBrowser: "Denne nettleseren kan ikke koble til. Prøv Chrome, Safari eller Edge.",
       waitHost: "Venter på at verten starter…", joinGroupReady: "Bli med i en gruppe for å være klar.",
     },
     reconnect: {

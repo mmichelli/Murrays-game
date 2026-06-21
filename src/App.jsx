@@ -491,6 +491,7 @@ function ClientApp({ onExit, initialRoom }) {
   const [code, setCode] = useState(saved?.code || initialRoom || "");
   const [step, setStep] = useState(resuming ? "connecting" : "form"); // form | connecting | lobby
   const [status, setStatus] = useState("");
+  const [connStage, setConnStage] = useState(0); // 0 starting up, 1 reaching host, 2 joined
   const [reconnecting, setReconnecting] = useState(false);
   const [online, setOnline] = useState(typeof navigator === "undefined" ? true : navigator.onLine);
   const [lobby, setLobby] = useState(null), [view, setView] = useState(null);
@@ -525,20 +526,23 @@ function ClientApp({ onExit, initialRoom }) {
   // stale closures even though they're recreated each render.
   function dialHost() {
     if (!aliveRef.current || !peerRef.current) return;
-    setStatus(t("client.reaching"));
-    let conn;
+    let conn, opened = false;
     try { conn = peerRef.current.connect(peerIdFor(codeRef.current), { reliable: true }); }
     catch { return scheduleRetry(); }
     connRef.current = conn;
+    // A stalled dial sometimes fires neither open nor error; retry if it hasn't
+    // connected in time so the join never just sits there.
+    const dialTimeout = setTimeout(() => { if (!opened && aliveRef.current && connRef.current === conn) scheduleRetry(); }, 10000);
     conn.on("open", () => {
-      retryRef.current = 0; setReconnecting(false); setStatus(""); setStep("lobby");
+      opened = true; clearTimeout(dialTimeout);
+      retryRef.current = 0; setReconnecting(false); setStatus(""); setConnStage(2); setStep("lobby");
       conn.send(JSON.stringify({ t: "hello", name: nameRef.current, cid: cidRef.current }));
       // Re-send a group choice made while we were offline so the host catches up.
       if (pendingTeamRef.current !== undefined) conn.send(JSON.stringify({ t: "setTeam", teamId: pendingTeamRef.current }));
     });
     conn.on("data", (d) => { try { const m = JSON.parse(d); if (m.t === "lobby") setLobby(m.lobby); else if (m.t === "view") setView(m.view); } catch {} });
-    conn.on("close", () => { if (aliveRef.current) scheduleRetry(); });
-    conn.on("error", () => { if (aliveRef.current) scheduleRetry(); });
+    conn.on("close", () => { clearTimeout(dialTimeout); if (aliveRef.current) scheduleRetry(); });
+    conn.on("error", () => { clearTimeout(dialTimeout); if (aliveRef.current) scheduleRetry(); });
     // A clean "close" doesn't always fire when WebRTC dies - watch the ICE
     // state so a silent failure still kicks off a reconnect.
     conn.on("iceStateChanged", (st) => {
@@ -548,14 +552,18 @@ function ClientApp({ onExit, initialRoom }) {
     });
   }
   async function spinUp() {
+    setConnStage(0); // starting up: loading peerjs + registering with the broker
     const { default: Peer } = await import("peerjs");
     if (!aliveRef.current) return;
     const peer = new Peer(peerOptions());
     peerRef.current = peer;
-    peer.on("open", () => dialHost());
+    peer.on("open", () => { setConnStage(1); dialHost(); }); // registered -> reach the host
     peer.on("disconnected", () => { if (aliveRef.current) { try { peer.reconnect(); } catch {} } });
     peer.on("error", (err) => {
-      if (err?.type === "peer-unavailable") setStatus(t("client.roomNotAnswering"));
+      const type = err?.type;
+      // A browser that can't do WebRTC won't get better by retrying.
+      if (type === "browser-incompatible" || type === "ssl-unavailable") { setStatus(t("client.badBrowser")); return; }
+      if (type === "peer-unavailable") setStatus(t("client.hostNotFound")); // host id not found yet
       if (aliveRef.current) scheduleRetry();
     });
   }
@@ -597,7 +605,7 @@ function ClientApp({ onExit, initialRoom }) {
     cidRef.current = stableClientId(c);
     ssSet(PK.client, { name: n, code: c }); // remember so a reload re-dials itself
     aliveRef.current = true; retryRef.current = 0;
-    setStep("connecting"); setStatus(t("client.reaching"));
+    setStep("connecting"); setStatus(""); setConnStage(0);
     spinUp();
   }
   const join = () => {
@@ -656,7 +664,12 @@ function ClientApp({ onExit, initialRoom }) {
         <button className="fb-btn" disabled={!name.trim() || !code.trim()} onClick={join}>{t("client.join")}</button>
         {status && <p className="fb-err">{status}</p>}
       </>)}
-      {step === "connecting" && <p className="fb-muted">{status || t("client.connecting")}</p>}
+      {step === "connecting" && (
+        <div className="fb-stack fb-center">
+          <ConnSteps stage={connStage} />
+          {status && <p className="fb-connhint">{status}</p>}
+        </div>
+      )}
       {step === "lobby" && lobby && (<>
         <GroupBoard
           teams={lobby.teams} roster={lobby.roster} myId={myId} myTeamId={myTeam}
@@ -681,6 +694,22 @@ function ReconnectBanner({ show, online }) {
     <div className={`fb-reconnect ${online ? "" : "offline"}`} role="status" title={label} aria-label={label}>
       <span className="fb-reconnect-ico" aria-hidden="true">⟳</span>
     </div>
+  );
+}
+// Live progress for the join handshake: a checklist where the current step
+// spins, earlier ones tick, so a slow connect shows movement instead of a
+// frozen screen.
+function ConnSteps({ stage }) {
+  const t = useT();
+  const labels = [t("client.stepStart"), t("client.stepReach"), t("client.stepJoin")];
+  return (
+    <ol className="fb-connsteps">
+      {labels.map((label, i) => (
+        <li key={i} className={`fb-connstep ${i < stage ? "done" : i === stage ? "now" : ""}`}>
+          <span className="fb-connmark" aria-hidden="true">{i < stage ? "✓" : i === stage ? "⟳" : ""}</span>{label}
+        </li>
+      ))}
+    </ol>
   );
 }
 
